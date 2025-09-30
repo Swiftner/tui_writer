@@ -1,0 +1,33 @@
+[project]
+name="tui_writer"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python=">=3.10"
+dependencies = [
+    "nbdev>=2.4.5",
+    "textual>=6.1.0",
+    "textual-dev>=1.7.0",
+    "click",
+    "sounddevice",
+    "torch",
+    "faster_whisper",
+    "rich",
+    "pyperclip",
+    "numpy",
+    "typer>=0.19.2",
+    "smolagents[openai]",
+    "fastrtc>=0.0.33",
+]
+
+[project.scripts]
+
+tui_writer = "tui_writer.cli:app"
+
+[tool.uv]
+package = true
+dev-dependencies = [
+    "jupyterlab",
+    "ipykernel"
+]
+
