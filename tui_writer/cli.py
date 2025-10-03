@@ -293,7 +293,7 @@ class TranscriptionTUI(App):
         elif button_id == "models-btn":
             self.list_models()
         elif button_id == "quit-btn":
-            self.quit()
+            self.action_quit()
 
     def action_start_recording(self) -> None:
         """Start audio recording."""
