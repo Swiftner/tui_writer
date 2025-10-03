@@ -23,7 +23,6 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Header, Footer, Static, Button, DataTable
 from textual.widgets import TextArea
-from fastcore.basics import patch_to
 
 
 # Console for rich formatting

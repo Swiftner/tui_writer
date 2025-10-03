@@ -10,7 +10,6 @@ from pathlib import Path
 import numpy as np
 import sounddevice as sd
 from rich.console import Console
-from fastcore.basics import patch_to
 
 console = Console()
 
@@ -32,6 +31,37 @@ class AudioRecorder:
             audio_int16 = (indata * 32767).astype(np.int16)
             self.wave_file.writeframes(audio_int16.tobytes())
             self.recording_frames += frames
+
+    def _validate_audio_device(self):
+        try:
+            default_input = sd.query_devices(kind="input")
+            if default_input is None:
+                raise RuntimeError("No audio input device found")
+        except Exception as e:
+            raise RuntimeError(f"Failed to access audio devices: {e}")
+
+    def _get_audio_file_path(self) -> Path:
+        if sys.platform == "win32":
+            cache_dir = Path.home() / "AppData" / "Local" / "hns" / "Cache"
+        elif sys.platform == "darwin":
+            cache_dir = Path.home() / "Library" / "Caches" / "hns"
+        else:
+            cache_dir = Path.home() / ".cache" / "hns"
+
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        return cache_dir / "last_recording.wav"
+
+    def _prepare_wave_file(self):
+        self.recording_frames = 0
+        self.wave_file = wave.open(str(self.audio_file_path), "wb")
+        self.wave_file.setnchannels(self.channels)
+        self.wave_file.setsampwidth(2)  # 16-bit audio
+        self.wave_file.setframerate(self.sample_rate)
+
+    def _close_wave_file(self):
+        if self.wave_file:
+            self.wave_file.close()
+            self.wave_file = None
 
     def start_recording(self):
         """Start recording audio from the microphone.
@@ -69,42 +99,3 @@ class AudioRecorder:
             raise ValueError("No audio recorded")
 
         return self.audio_file_path
-
-
-
-# %% ../nbs/01_audio.ipynb 4
-@patch_to(AudioRecorder)
-def _validate_audio_device(self):
-    try:
-        default_input = sd.query_devices(kind="input")
-        if default_input is None:
-            raise RuntimeError("No audio input device found")
-    except Exception as e:
-        raise RuntimeError(f"Failed to access audio devices: {e}")
-
-@patch_to(AudioRecorder)
-def _get_audio_file_path(self) -> Path:
-    if sys.platform == "win32":
-        cache_dir = Path.home() / "AppData" / "Local" / "hns" / "Cache"
-    elif sys.platform == "darwin":
-        cache_dir = Path.home() / "Library" / "Caches" / "hns"
-    else:
-        cache_dir = Path.home() / ".cache" / "hns"
-
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir / "last_recording.wav"
-
-@patch_to(AudioRecorder)
-def _prepare_wave_file(self):
-    self.recording_frames = 0
-    self.wave_file = wave.open(str(self.audio_file_path), "wb")
-    self.wave_file.setnchannels(self.channels)
-    self.wave_file.setsampwidth(2)  # 16-bit audio
-    self.wave_file.setframerate(self.sample_rate)
-
-@patch_to(AudioRecorder)
-def _close_wave_file(self):
-    if self.wave_file:
-        self.wave_file.close()
-        self.wave_file = None
-
