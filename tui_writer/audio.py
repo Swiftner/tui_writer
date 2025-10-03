@@ -3,7 +3,7 @@
 # %% auto 0
 __all__ = ['console', 'AudioRecorder']
 
-# %% ../nbs/01_audio.ipynb 1
+# %% ../nbs/01_audio.ipynb 2
 import sys
 import wave
 from pathlib import Path
@@ -13,7 +13,7 @@ from rich.console import Console
 
 console = Console()
 
-# %% ../nbs/01_audio.ipynb 3
+# %% ../nbs/01_audio.ipynb 4
 class AudioRecorder:
     """Audio recording system for capturing microphone input."""
     def __init__(self, sample_rate: int = 16000, channels: int = 1):

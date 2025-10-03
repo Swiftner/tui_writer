@@ -37,34 +37,6 @@ def _is_cuda_available() -> bool:
     except ImportError:
         return False
 
-
-# ### GPU Hardware Detection
-#
-# The `_is_cuda_available()` function performs runtime hardware analysis to determine optimal processing capabilities. This enables automatic optimization based on available hardware resources.
-#
-# **Performance Impact:**
-# - **GPU Available**: Uses `device="cuda"` and `compute_type="float16"` for 3-5x faster processing
-# - **GPU Not Available**: Falls back to `device="cpu"` and `compute_type="int8"` for compatibility
-#
-# **Usage Examples:**
-# ```python
-# # Automatic hardware detection
-# if _is_cuda_available():
-#     device = "cuda"
-#     compute_type = "float16"
-# else:
-#     device = "cpu"
-#     compute_type = "int8"
-#
-# model = WhisperModel("base", device=device, compute_type=compute_type)
-# ```
-#
-# **Error Handling:**
-# The function gracefully handles cases where PyTorch is not installed by returning `False`, ensuring the application remains functional across different system configurations.
-    # Check if CUDA is available for GPU acceleration
-
-
-
 # %% ../nbs/00_cli.ipynb 5
 def format_duration(seconds: float) -> str:
     """Format duration in seconds to HH:MM:SS or MM:SS format."""
