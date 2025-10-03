@@ -51,7 +51,6 @@ def format_duration(seconds: float) -> str:
         return f"{minutes:02d}:{secs:02d}"
 
 
-
 # %% ../nbs/00_cli.ipynb 12
 class WhisperTranscriber:
     """AI-powered speech recognition system using OpenAI's Whisper model."""
@@ -171,7 +170,6 @@ class WhisperTranscriber:
             raise RuntimeError(f"Transcription failed: {e}")
 
 
-
 # %% ../nbs/00_cli.ipynb 14
 def copy_to_clipboard(text: str, elapsed_time: Optional[float] = None):
     """Copy transcribed text to system clipboard and display results.
@@ -195,7 +193,6 @@ def copy_to_clipboard(text: str, elapsed_time: Optional[float] = None):
     else:
         console.print("✅ [bold green]Transcribed and copied to clipboard![/bold green]")
     console.print(f"\n{text}")        
-
 
 # %% ../nbs/00_cli.ipynb 18
 class TranscriptionTUI(App):
@@ -739,7 +736,6 @@ class ModelsScreen(ModalScreen):
                 self.dismiss()
 
 
-
 # %% ../nbs/00_cli.ipynb 21
 app = typer.Typer()
 
@@ -819,6 +815,5 @@ def transcribe_last():
     except Exception as e:
         console.print(f"❌ [bold red]Unexpected error: {e}[/bold red]")
         sys.exit(1)
-
 
 
