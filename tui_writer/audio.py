@@ -72,7 +72,7 @@ class AudioRecorder:
 
 
 
-# %% ../nbs/01_audio.ipynb 5
+# %% ../nbs/01_audio.ipynb 4
 @patch_to(AudioRecorder)
 def _validate_audio_device(self):
     try:
