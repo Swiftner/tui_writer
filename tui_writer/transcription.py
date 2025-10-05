@@ -25,7 +25,7 @@ def _is_cuda_available() -> bool:
     except ImportError:
         return False
 
-# %% ../nbs/02_transcription.ipynb 3
+# %% ../nbs/02_transcription.ipynb 2
 class WhisperTranscriber:
     """AI-powered speech recognition system using OpenAI's Whisper model."""
     VALID_MODELS = [
@@ -110,6 +110,35 @@ class WhisperTranscriber:
             return WhisperModel(self.model_name, device=device, compute_type=compute_type)
         except Exception as e:
             raise RuntimeError(f"Failed to load model: {e}")
+
+    def update_model(self, model_name: str) -> None:
+        """Update the transcriber to use a different Whisper model.
+        
+        This method allows dynamic model switching during runtime, enabling users
+        to change transcription models without restarting the application. It 
+        validates the new model name, updates the model configuration, and loads
+        the new model with appropriate device settings.
+        
+        Args:
+            model_name: Name of the Whisper model to switch to (e.g., "base", "small")
+                       Must be one of the VALID_MODELS
+        
+        Raises:
+            ValueError: If the provided model_name is not valid
+            RuntimeError: If the model fails to load
+        
+        Example:
+            >>> transcriber = WhisperTranscriber()
+            >>> transcriber.update_model("large-v3")  # Switch to larger model
+        """
+        # Validate the new model name
+        validated_model = self._get_model_name(model_name)
+        
+        # Update the model name
+        self.model_name = validated_model
+        
+        # Reload the model with the new configuration
+        self.model = self._load_model()
 
     def transcribe(self, audio_source: Union[Path, str]) -> tuple[str, float]:
         """Transcribe audio file to text using the loaded Whisper model."""
