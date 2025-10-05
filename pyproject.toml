@@ -22,7 +22,7 @@ dependencies = [
 
 [project.scripts]
 
-tui_writer = "tui_writer.cli:app"
+tui_writer = "tui_writer.cli:tui"
 
 [tool.uv]
 package = true
