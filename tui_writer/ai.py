@@ -14,7 +14,10 @@ import re
 
 # Load API key from .env file
 load_dotenv()
-_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# Create client with None if no API key (will fail only when used)
+_api_key = os.getenv("OPENAI_API_KEY")
+_client = OpenAI(api_key=_api_key) if _api_key else None
 
 # %% ../nbs/01_ai.ipynb 5
 # --- Replace all ------------------------------------------------------------
@@ -157,6 +160,12 @@ def _plan_edits(instruction: str, model: str = "gpt-4o-mini") -> EditPlan:
     Append a user instruction, call the model with structured output, and return the parsed plan.
     """
     global _messages, _client
+
+    if _client is None:
+        raise RuntimeError(
+            "OpenAI client not initialized. Set OPENAI_API_KEY in your .env file."
+        )
+
     # Add the new instruction to the conversation
     _messages.append({"role": "user", "content": f"Instruction: {instruction}"})
 
