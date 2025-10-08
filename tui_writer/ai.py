@@ -4,7 +4,7 @@
 __all__ = ['ReplaceAllOp', 'RegexReplaceOp', 'InsertAtOp', 'InsertAfterOp', 'DeleteOp', 'EditPlan', 'has_session',
            'start_session', 'apply_instruction', 'current_transcript', 'reset_session']
 
-# %% ../nbs/01_ai.ipynb 3
+# %% ../nbs/01_ai.ipynb 2
 from typing import List, Dict, Literal, Union
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from openai import OpenAI
@@ -19,7 +19,7 @@ load_dotenv()
 _api_key = os.getenv("OPENAI_API_KEY")
 _client = OpenAI(api_key=_api_key) if _api_key else None
 
-# %% ../nbs/01_ai.ipynb 5
+# %% ../nbs/01_ai.ipynb 4
 # --- Replace all ------------------------------------------------------------
 
 class ReplaceAllOp(BaseModel):
@@ -91,7 +91,7 @@ class EditPlan(BaseModel):
     ]
     model_config = ConfigDict(extra="forbid")
 
-# %% ../nbs/01_ai.ipynb 7
+# %% ../nbs/01_ai.ipynb 6
 # --- session state (module-level) ---
 _messages: List[Dict[str, str]] | None = None
 _current: str | None = None
@@ -152,9 +152,7 @@ def _set_current_transcript(new_transcript: str) -> None:
         "content": f"Current text to edit:\n{new_transcript}",
     })
 
-# %% ../nbs/01_ai.ipynb 9
-import re
-
+# %% ../nbs/01_ai.ipynb 8
 def _plan_edits(instruction: str, model: str = "gpt-4o-mini") -> EditPlan:
     """
     Append a user instruction, call the model with structured output, and return the parsed plan.
@@ -209,7 +207,7 @@ def _apply_plan(transcript: str, plan: EditPlan) -> str:
                     updated = updated[:idx] + updated[idx + len(op.text):]
     return updated
 
-# %% ../nbs/01_ai.ipynb 11
+# %% ../nbs/01_ai.ipynb 10
 def has_session() -> bool:
     """Return True if an edit session is initialized."""
     return _messages is not None and _current is not None
