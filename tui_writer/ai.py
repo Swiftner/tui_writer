@@ -2,22 +2,19 @@
 
 # %% auto 0
 __all__ = ['ReplaceAllOp', 'RegexReplaceOp', 'InsertAtOp', 'InsertAfterOp', 'DeleteOp', 'EditPlan', 'has_session',
-           'start_session', 'apply_instruction', 'current_transcript', 'reset_session']
+           'start_session', 'apply_instruction', 'current_transcript', 'reset_session', 'ai_chat',
+           'summarize_transcript', 'explain_edits', 'improve_transcript']
 
 # %% ../nbs/01_ai.ipynb 2
 from typing import List, Dict, Literal, Union
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from openai import OpenAI
 from dotenv import load_dotenv
-import os
 import re
+import json
+from lisette import Chat
 
-# Load API key from .env file
+
 load_dotenv()
-
-# Create client with None if no API key (will fail only when used)
-_api_key = os.getenv("OPENAI_API_KEY")
-_client = OpenAI(api_key=_api_key) if _api_key else None
 
 # %% ../nbs/01_ai.ipynb 4
 # --- Replace all ------------------------------------------------------------
@@ -153,30 +150,31 @@ def _set_current_transcript(new_transcript: str) -> None:
     })
 
 # %% ../nbs/01_ai.ipynb 8
-def _plan_edits(instruction: str, model: str = "gpt-4o-mini") -> EditPlan:
+def _plan_edits(instruction: str, model: str = "gemini/gemini-2.5-flash") -> EditPlan:
     """
     Append a user instruction, call the model with structured output, and return the parsed plan.
     """
-    global _messages, _client
-
-    if _client is None:
-        raise RuntimeError(
-            "OpenAI client not initialized. Set OPENAI_API_KEY in your .env file."
-        )
+    global _messages
 
     # Add the new instruction to the conversation
     _messages.append({"role": "user", "content": f"Instruction: {instruction}"})
 
-    completion = _client.chat.completions.parse(
-        model=model,
-        messages=_messages,
-        response_format=EditPlan,  # enforce strict structured output
-        temperature=0
-    )
-    msg = completion.choices[0].message
-    if msg.refusal:
-        raise RuntimeError(f"Model refused: {msg.refusal}")
-    return msg.parsed
+    # Use lisette to get structured JSON response
+    chat = Chat(model, response_format="json")
+    
+    # Format messages for lisette (convert our format to lisette's expected format)
+    response = chat(messages=_messages, temperature=0)
+    
+    # Extract the JSON content from response
+    content = response.choices[0].message.content
+    
+    # Parse JSON and validate with Pydantic
+    try:
+        data = json.loads(content)
+        plan = EditPlan.model_validate(data)
+        return plan
+    except (json.JSONDecodeError, Exception) as e:
+        raise RuntimeError(f"Failed to parse model response as EditPlan: {e}\nResponse: {content}")
 
 
 def _apply_plan(transcript: str, plan: EditPlan) -> str:
@@ -219,12 +217,12 @@ def start_session(initial_transcript: str) -> str:
     _messages = _new_conversation(initial_transcript)
     return _current
 
-def apply_instruction(instruction: str) -> str:
+def apply_instruction(instruction: str, model: str = "gemini/gemini-2.5-flash") -> str:
     """Apply an instruction to the current transcript and return the updated text."""
     global _current
     if not has_session():
         raise RuntimeError("No session. Call start_session() first.")
-    plan = _plan_edits(instruction)
+    plan = _plan_edits(instruction, model)
     _current = _apply_plan(_current, plan)
     _set_current_transcript(_current)
     return _current
@@ -237,3 +235,102 @@ def reset_session() -> None:
     """Clear session state."""
     global _messages, _current
     _messages, _current = None, None
+
+# %% ../nbs/01_ai.ipynb 12
+def ai_chat(
+    prompt: str, 
+    model: str = "gemini/gemini-2.5-flash", 
+    enable_search: bool = False
+) -> str:
+    """
+    General-purpose AI chat using lisette for multi-provider support.
+    
+    Args:
+        prompt: Question or instruction for the AI
+        model: Model identifier (e.g., "gemini/gemini-2.5-flash", "claude-sonnet-4-20250514", "gpt-4o")
+        enable_search: Whether to enable web search capabilities
+    
+    Returns:
+        AI response text
+        
+    Example:
+        >>> response = ai_chat("What is the capital of Norway?", enable_search=True)
+        >>> print(response)
+    """
+    search_level = "l" if enable_search else None
+    chat = Chat(model, search=search_level)
+    response = chat(prompt)
+    return response.choices[0].message.content
+
+
+def summarize_transcript(
+    transcript: str, 
+    model: str = "gemini/gemini-2.5-flash",
+    max_words: int = 100
+) -> str:
+    """
+    Generate a concise summary of a transcript.
+    
+    Args:
+        transcript: The text to summarize
+        model: AI model to use
+        max_words: Maximum words for the summary
+        
+    Returns:
+        Summary text
+    """
+    prompt = f"""Summarize this transcript in {max_words} words or less:
+
+{transcript}
+
+Provide a clear, concise summary."""
+    return ai_chat(prompt, model)
+
+
+def explain_edits(original: str, edited: str, model: str = "gemini/gemini-2.5-flash") -> str:
+    """
+    Get an AI explanation of what changed between two text versions.
+    
+    Args:
+        original: Original text
+        edited: Edited/modified text
+        model: AI model to use
+        
+    Returns:
+        Natural language explanation of changes
+    """
+    prompt = f"""Compare these two versions and explain what changed:
+
+ORIGINAL:
+{original}
+
+EDITED:
+{edited}
+
+Provide a brief, clear explanation of the changes made."""
+    return ai_chat(prompt, model)
+
+
+def improve_transcript(
+    transcript: str,
+    instructions: str = "Fix grammar, punctuation, and clarity while preserving meaning",
+    model: str = "gemini/gemini-2.5-flash"
+) -> str:
+    """
+    Use AI to improve transcript quality with flexible instructions.
+    
+    Args:
+        transcript: Text to improve
+        instructions: How to improve it (grammar, clarity, formality, etc.)
+        model: AI model to use
+        
+    Returns:
+        Improved transcript text
+    """
+    prompt = f"""{instructions}
+
+TEXT:
+{transcript}
+
+Return ONLY the improved text, no explanations."""
+    return ai_chat(prompt, model)
