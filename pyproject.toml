@@ -15,6 +15,7 @@ dependencies = [
     "faster_whisper",
     "rich",
     "pyperclip",
+    "pyaudio",
     "numpy",
     "typer>=0.19.2",
     "smolagents[openai]",
