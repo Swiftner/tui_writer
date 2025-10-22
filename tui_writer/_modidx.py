@@ -181,30 +181,6 @@ d = { 'settings': { 'branch': 'main',
                                                                                                'tui_writer/tui_template.py'),
                                          'tui_writer.tui_template.TranscriptField.compose': ( 'tui_template.html#transcriptfield.compose',
                                                                                               'tui_writer/tui_template.py')},
-            'tui_writer.tui_test': { 'tui_writer.tui_test.TUITemplate': ('tui_template copy.html#tuitemplate', 'tui_writer/tui_test.py'),
-                                     'tui_writer.tui_test.TUITemplate.__init__': ( 'tui_template copy.html#tuitemplate.__init__',
-                                                                                   'tui_writer/tui_test.py'),
-                                     'tui_writer.tui_test.TUITemplate.action_toggle_recording': ( 'tui_template '
-                                                                                                  'copy.html#tuitemplate.action_toggle_recording',
-                                                                                                  'tui_writer/tui_test.py'),
-                                     'tui_writer.tui_test.TUITemplate.compose': ( 'tui_template copy.html#tuitemplate.compose',
-                                                                                  'tui_writer/tui_test.py'),
-                                     'tui_writer.tui_test.TUITemplate.on_button_pressed': ( 'tui_template '
-                                                                                            'copy.html#tuitemplate.on_button_pressed',
-                                                                                            'tui_writer/tui_test.py'),
-                                     'tui_writer.tui_test.TUITemplate.on_mount': ( 'tui_template copy.html#tuitemplate.on_mount',
-                                                                                   'tui_writer/tui_test.py'),
-                                     'tui_writer.tui_test.TUITemplate.start_recording': ( 'tui_template '
-                                                                                          'copy.html#tuitemplate.start_recording',
-                                                                                          'tui_writer/tui_test.py'),
-                                     'tui_writer.tui_test.TUITemplate.stop_recording': ( 'tui_template '
-                                                                                         'copy.html#tuitemplate.stop_recording',
-                                                                                         'tui_writer/tui_test.py'),
-                                     'tui_writer.tui_test.TUITemplate.update_status': ( 'tui_template copy.html#tuitemplate.update_status',
-                                                                                        'tui_writer/tui_test.py'),
-                                     'tui_writer.tui_test.TUITemplate.watch_recording': ( 'tui_template '
-                                                                                          'copy.html#tuitemplate.watch_recording',
-                                                                                          'tui_writer/tui_test.py')},
             'tui_writer.utils': { 'tui_writer.utils.copy_to_clipboard': ('utils.html#copy_to_clipboard', 'tui_writer/utils.py'),
                                   'tui_writer.utils.format_duration': ('utils.html#format_duration', 'tui_writer/utils.py'),
                                   'tui_writer.utils.is_cuda_available': ('utils.html#is_cuda_available', 'tui_writer/utils.py')}}}

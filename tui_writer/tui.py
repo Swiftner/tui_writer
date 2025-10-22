@@ -12,7 +12,7 @@ from textual import on
 from textual.app import App, ComposeResult
 from textual.reactive import reactive
 from textual.containers import Container, VerticalGroup, Grid, HorizontalGroup, CenterMiddle
-from textual.widgets import Header, Footer, Static, Digits, Button, Label, TextArea
+from textual.widgets import Header, Footer, Static, Digits, Button, Label, TextArea, Log
 
 from .live import LiveTranscriber
 from .ai import has_session, start_session, apply_instruction, current_transcript, reset_session
@@ -247,8 +247,8 @@ class TranscriptionTUI(App):
         header = Header(show_clock=True)
         header.tall = True
 
-        transcript_field = Label(id="transcript-field")
-        transcript_field.border_title = "Last block of speech"
+        self.transcript_field = Label("hrifherfeifiohrfhioerfihefherhifoiehfoih",id="transcript-field")
+
 
         textfield = Label(id="textfield")
         textfield.border_title = "Full Transcript"
@@ -257,14 +257,10 @@ class TranscriptionTUI(App):
         with Container(id="top-cards"):
             yield StatusCard()
             yield InfoCard()  # Add an Info widget here
-            yield transcript_field
+            yield self.transcript_field
     
         with textfield:
-            yield TextArea(
-                "",
-                read_only=True,
-                show_line_numbers=True,
-                show_cursor=False,
+            yield Log(
                 id="main-textarea",
             )
         yield Footer()
@@ -367,13 +363,14 @@ class TranscriptionTUI(App):
             return
         self.all_chunks.append(text + "\n")
         self.transcript_block.update(text)
-        self.main_textarea.text = (self.main_textarea.text or "") + text + "\n"
+        self.main_textarea.write_line(text)
 
     def on_mount(self) -> None:
         self.status_card: StatusCard = self.query_one(StatusCard)
         self.time_display: TimeDisplay = self.query_one(TimeDisplay)
         self.transcript_block: Label = self.query_one("#transcript-field", Label)
-        self.main_textarea: TextArea = self.query_one("#main-textarea", TextArea)
+        self.main_textarea: Log = self.query_one("#main-textarea", Log)
+        self.transcript_field.border_title = "Last block of speech"
 
     async def on_unmount(self) -> None:
         await self._stop()
