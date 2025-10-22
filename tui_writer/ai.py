@@ -227,7 +227,7 @@ def apply_instruction(instruction: str) -> str:
     plan = _plan_edits(instruction)
     _current = _apply_plan(_current, plan)
     _set_current_transcript(_current)
-    return _current
+    return _current, plan
 
 def current_transcript() -> str:
     """Get the latest edited transcript (or '' if none)."""
