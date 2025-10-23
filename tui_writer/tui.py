@@ -12,7 +12,7 @@ from textual import on, events
 from textual.app import App, ComposeResult
 from textual.reactive import reactive
 from textual.containers import Container, VerticalGroup, Grid, HorizontalGroup, CenterMiddle, Horizontal
-from textual.widgets import Header, Footer, Static, Digits, Button, Label, TextArea, Log, Switch
+from textual.widgets import Header, Footer, Static, Digits, Button, Label, TextArea, Log, Select
 
 from .live import LiveTranscriber
 from .ai import has_session, start_session, apply_instruction, current_transcript, reset_session
@@ -165,41 +165,13 @@ class TimeDisplay(Digits):
 
 class StatusCard(Label):
     """Recording status card with controls"""
-    status_text = reactive("● STANDBY")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.border_title = "Recording Status"
-        self._status_label: Static | None = None
-
-    def start_transcript(self):
-        self.add_class("active")
-        self.status_text = "● RECORDING..."
-
-    def pause_transcript(self):
-        self.remove_class("active")
-        self.add_class("paused")
-        self.status_text = "⏸ PAUSED"
-
-    def resume_transcript(self):
-        self.remove_class("paused")
-        self.add_class("active")
-        self.status_text = "● RECORDING..."
-
-    def stop_transcript(self):
-        self.remove_class("paused")
-        self.remove_class("active")
-        self.status_text = "● STANDBY"
-    
-    def on_mount(self) -> None:
-        self._status_label = self.query_one("#status", Static)
-
-    def watch_status_text(self) -> None:
-        if self.is_mounted and self._status_label:
-            self._status_label.update(self.status_text)
 
     def compose(self) -> ComposeResult:
-        yield Static(self.status_text, id="status")
+        yield Static("○ STANDBY", id="status")
         with CenterMiddle():
             yield TimeDisplay("0:00:00", id="status-time")
         with HorizontalGroup(id="media-controls"):
@@ -209,12 +181,26 @@ class StatusCard(Label):
             yield Button("◼ STOP <s>", id="stop")
     
 class InfoCard(Label):
+    WHISPER_MODELS = [
+        ("Tiny      ⚡  Ultra fast - Low accuracy", "tiny"),
+        ("Base      ⚡  Fast       - Decent accuracy", "base"),
+        ("Small     ⚖  Balanced  - Good accuracy", "small"),
+        ("Medium    🐢  Slow    - High accuracy",  "medium"),
+        ("Large     🐢  Very Slow - Best accuracy", "large"),
+    ]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.border_title = "Info"
 
     def compose(self) -> ComposeResult:
+        yield Select(
+            options=self.WHISPER_MODELS,
+            prompt="Choose a Whisper model...",
+            allow_blank=False,
+            value="base",
+            id="whisper-select",
+        )
         yield Static("Model: Whisper-Tiny")
         yield Static("Microphone: Default System Mic")
 
@@ -223,20 +209,39 @@ class RecordingState(Enum):
     IDLE = auto()
     RECORDING = auto()
     PAUSED = auto()
+    EDIT = auto()
 
 class TranscriptionTUI(App):
 
     TITLE = "TUI Writer"
     SUB_TITLE = "Design Template"
     CSS = TEXTUAL_CSS
+    AUTO_FOCUS = None
 
-    state: RecordingState = RecordingState.IDLE
-    edit_mode = reactive(False)
+
+    state = reactive(RecordingState.IDLE)
+
+
+    def watch_state(self, new_state: RecordingState) -> None:
+        self.status_card.remove_class("active")
+        self.status_card.remove_class("paused")
+
+        match new_state:
+            case RecordingState.IDLE:
+                self.status_text.update("○ STANDBY")
+            case RecordingState.RECORDING:
+                self.status_card.add_class("active")
+                self.status_text.update("● RECORDING...")
+            case RecordingState.PAUSED:
+                self.status_card.add_class("paused")
+                self.status_text.update("⏸ PAUSED")
+            case RecordingState.EDIT:
+                self.status_card.add_class("active")
+                self.status_text.update("● LIVE EDITING...")
 
     BINDINGS = [
         ("q", "quit", "Quit"),
         ("space", "toggle_recording", "Start/Pause/Resume"),
-        ("l", "list_models", "List Models"),
         ("s", "stop_recording", "Stop")
     ]
 
@@ -245,6 +250,7 @@ class TranscriptionTUI(App):
         self._task: asyncio.Task | None = None
         self._transcriber: LiveTranscriber | None = None
         self.all_chunks: str = ""
+        self.whisper_model = "base"
 
     def compose(self) -> ComposeResult:
         header = Header(show_clock=True)
@@ -259,7 +265,7 @@ class TranscriptionTUI(App):
 
         with Container(id="top-cards"):
             yield StatusCard()
-            yield InfoCard()  # Add an Info widget here
+            yield InfoCard()
             yield self.transcript_field
         
         with textfield:
@@ -275,14 +281,43 @@ class TranscriptionTUI(App):
         elif self.state is RecordingState.PAUSED:
             await self._resume()
     
+    async def action_stop_recording(self) -> None:
+        if self.state is not RecordingState.IDLE:
+            await self._stop()
+
+    @on(Button.Pressed, "#start")
+    async def _on_start(self, _):
+        await self._start()
+
+    @on(Button.Pressed, "#pause")
+    async def _on_pause(self, _):
+        await self._pause()
+
+    @on(Button.Pressed, "#resume")
+    async def _on_resume(self, _):
+        await self._resume()
+
+    @on(Button.Pressed, "#stop")
+    async def _on_stop(self, _):
+        await self._stop()
+
+    @on(Select.Changed, "#whisper-select")
+    def select_changed(self, event: Select.Changed) -> None:
+        self.whisper_model = str(event.value)
+    
     async def on_key(self, event: events.Key) -> None:
         if event.key != "e":
             return
 
-        if not getattr(self, "_editing", False):
-            self._editing = True
-            await self._pause()
+        if self.state is not RecordingState.EDIT:
+            # save current state before switching to edit-state
+            self._old_state = self.state
+
+            if self.state is RecordingState.RECORDING:
+                await self._pause()
+            
             await self._start_edit()
+            
         else:
             self.transcript_block.loading = True
             self.main_textarea.loading = True
@@ -290,12 +325,17 @@ class TranscriptionTUI(App):
             self.transcript_block.loading = False
             self.main_textarea.loading = False
             self.plan = None
-            self._editing = False
+            
+            # Restore previous state safely
+            self.state = getattr(self, "_old_state", RecordingState.PAUSED)
+            # If previous state was recording, resume automatically.
+            if self.state is RecordingState.RECORDING:
+                await self._resume()
 
     async def _start_edit(self) -> None:
         self.current_transcript = start_session(self.all_chunks)
         self._transcriber = LiveTranscriber(
-            model_id="base",
+            model_id=self.whisper_model,
             language="en",
             on_transcript=self.on_transcript,
             vad_threshold=0.5,
@@ -303,6 +343,7 @@ class TranscriptionTUI(App):
             min_silence_duration_ms=500,
         )
         self._task = asyncio.create_task(self._transcriber.start())
+        self.state = RecordingState.EDIT
 
     async def _stop_edit(self) -> None:
         try:
@@ -334,33 +375,15 @@ class TranscriptionTUI(App):
         self.edit_instructions = (prev + ("\n" if prev else "") + instruction)
 
 
-    @on(Button.Pressed, "#start")
-    async def _on_start(self, _):
-        await self._start()
-
-    @on(Button.Pressed, "#pause")
-    async def _on_pause(self, _):
-        await self._pause()
-
-    @on(Button.Pressed, "#resume")
-    async def _on_resume(self, _):
-        await self._resume()
-
-    @on(Button.Pressed, "#stop")
-    async def _on_stop(self, _):
-        await self._stop()
-
-
     async def _start(self) -> None:
         if self.state is not RecordingState.IDLE:
             return
         self._transcriber = LiveTranscriber(
-            model_id="base", language="en",
+            model_id=self.whisper_model, language="en",
             on_transcript=self.on_transcript_chunk,
             vad_threshold=0.5, min_speech_duration_ms=250, min_silence_duration_ms=500,
         )
         self._task = asyncio.create_task(self._transcriber.start())
-        self.status_card.start_transcript()
         self.time_display.start()
         self.state = RecordingState.RECORDING
 
@@ -378,14 +401,13 @@ class TranscriptionTUI(App):
             self._task = None
             self._transcriber = None
             self.time_display.pause()
-            self.status_card.pause_transcript()
             self.state = RecordingState.PAUSED
 
     async def _resume(self) -> None:
         if self.state is not RecordingState.PAUSED:
             return
         self._transcriber = LiveTranscriber(
-            model_id="base",
+            model_id=self.whisper_model,
             language="en",
             on_transcript=self.on_transcript_chunk,
             vad_threshold=0.5,
@@ -394,7 +416,6 @@ class TranscriptionTUI(App):
         )
         self._task = asyncio.create_task(self._transcriber.start())
         self.time_display.start()
-        self.status_card.resume_transcript()
         self.state = RecordingState.RECORDING
 
     async def _stop(self) -> None:
@@ -411,7 +432,6 @@ class TranscriptionTUI(App):
             self._transcriber = None
             self._task = None
             self.time_display.stop()
-            self.status_card.stop_transcript()
             self.state = RecordingState.IDLE
 
     def on_transcript_chunk(self, text: str) -> None:
@@ -424,6 +444,7 @@ class TranscriptionTUI(App):
     def on_mount(self) -> None:
         self.status_card: StatusCard = self.query_one(StatusCard)
         self.time_display: TimeDisplay = self.query_one(TimeDisplay)
+        self.status_text: Static = self.query_one("#status", Static)
         self.transcript_block: Label = self.query_one("#transcript-field", Label)
         self.main_textarea: Log = self.query_one("#main-textarea", Log)
         self.transcript_field.border_title = "Edit Operations"
