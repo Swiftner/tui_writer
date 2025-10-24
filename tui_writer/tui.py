@@ -315,6 +315,7 @@ class TranscriptionTUI(App):
             self.transcript_block.loading = False
             self.main_textarea.loading = False
             self.plan = None
+            self.edit_instructions = ""
             
             # Restore previous state safely
             self.state = getattr(self, "_old_state", RecordingState.PAUSED)
@@ -348,14 +349,11 @@ class TranscriptionTUI(App):
             self._task = None
             self.current_transcript, self.plan = apply_instruction(self.edit_instructions)
             reset_session()
-            ops_text = "\n\n".join(
-                "Op: " + op.op + "\n" +
-                "\n".join(f"{key.capitalize()}: {value}" for key, value in op.model_dump().items() if key != "op")
-                for op in self.plan.ops
-            )
+            self.all_chunks = self.current_transcript
+            ops_text = f"Plan: {self.plan.model_dump_json(indent=2)}"
             self.transcript_block.update(ops_text)
             self.main_textarea.clear()
-            self.main_textarea.write_lines(self.current_transcript.splitlines(True))
+            self.main_textarea.write_lines(self.all_chunks.splitlines(True))
 
     def on_transcript(self, instruction: str) -> None:
         instruction = (instruction or "").strip()
