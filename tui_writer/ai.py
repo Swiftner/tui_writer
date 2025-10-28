@@ -4,10 +4,12 @@
 from __future__ import annotations
 from typing import List, Dict, Literal, Union, Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from openai import OpenAI
 from dotenv import load_dotenv
+import os
 import re
-import json
 
+# Load API key from .env file
 load_dotenv()
 
 # Create client with None if no API key (will fail only when used)
@@ -246,16 +248,15 @@ def _new_conversation(transcript: str) -> List[Dict[str, str]]:
         {
             "role": "system",
             "content": (
-                "You are a voice edit planner.\n"
-                "Given (1) the current transcript text and (2) a spoken edit instruction,"
-                "return ONLY a valid EditPlan JSON that, when applied, performs the requested edit.\n\n"
-
-                "Guidelines:\n"
-                "- Map literal find/replace → replace_all.\n"
-                "- Map pattern-based edits → regex_replace.\n"
-                "- Use insert_at / insert_before / insert_after for placement, not free-form prose.\n"
-                "- Prefer the minimal number of ops.\n"
-                "- Do not include explanations or extra keys.\n"
+                "You output EditPlan JSON only.\n"
+                "- Format: {\"ops\":[...]} (no text)\n"
+                "- Use the most specific op; avoid generic delete/replace if a line op fits\n"
+                "- line_index is 0-based (line 1 → 0)\n"
+                "- Each/every line: regex_replace with anchors ((?m)^ for prepend, (?m)$ for append)\n"
+                "- Last line: delete via pattern '(?:^|\\n)[^\\n]*\\Z'\n"
+                "- End of document insert: pattern '\\Z'\n"
+                "- Only include 'target' if nth/all/scope/ignore_case are clearly required\n"
+                "- Never guess values; omit optional fields when not needed\n"
             ),
         },
         {
@@ -283,32 +284,26 @@ def _plan_edits(instruction: str, model: str = "gpt-4o-mini") -> EditPlan:
     """
     Append a user instruction, call the model with structured output, and return the parsed plan.
     """
-    global _messages
+    global _messages, _client
+
+    if _client is None:
+        raise RuntimeError(
+            "OpenAI client not initialized. Set OPENAI_API_KEY in your .env file."
+        )
 
     # Add the new instruction to the conversation
     _messages.append({"role": "user", "content": f"Instruction: {instruction}"})
 
-    # Use litellm.completion to get structured JSON response
-    response = completion(
+    completion = _client.chat.completions.parse(
         model=model,
         messages=_messages,
-        response_format={"type": "json_object"},
+        response_format=EditPlan,  # enforce strict structured output
         temperature=0
     )
-    
-    # Extract the JSON content from response
-    content = response.choices[0].message.content
-    
-    # Parse JSON and validate with Pydantic
-    try:
-        data = json.loads(content)
-        # Handle case where LLM returns array directly instead of {"ops": [...]}
-        if isinstance(data, list):
-            data = {"ops": data}
-        plan = EditPlan.model_validate(data)
-        return plan
-    except (json.JSONDecodeError, Exception) as e:
-        raise RuntimeError(f"Failed to parse model response as EditPlan: {e}\nResponse: {content}")
+    msg = completion.choices[0].message
+    if msg.refusal:
+        raise RuntimeError(f"Model refused: {msg.refusal}")
+    return msg.parsed
 
 def _split_lines_keepends(s: str) -> List[str]:
     return s.splitlines(keepends=True) or [""]
@@ -602,12 +597,12 @@ def start_session(initial_transcript: str) -> str:
     _messages = _new_conversation(initial_transcript)
     return _current
 
-def apply_instruction(instruction: str, model: str = "gemini/gemini-2.5-flash") -> str:
+def apply_instruction(instruction: str) -> str:
     """Apply an instruction to the current transcript and return the updated text."""
     global _current
     if not has_session():
         raise RuntimeError("No session. Call start_session() first.")
-    plan = _plan_edits(instruction, model)
+    plan = _plan_edits(instruction)
     _current = _apply_plan(_current, plan)
     _set_current_transcript(_current)
     return _current, plan
