@@ -185,5 +185,19 @@ class LiveTranscriber:
         finally:
             audio.terminate()
 
+    async def flush(self):
+        if self.is_speech_active and len(self.speech_buffer) >= self.min_speech_samples:
+            text = await asyncio.to_thread(self._transcribe_chunk, self.speech_buffer)
+            if text and self.on_transcript:
+                if asyncio.iscoroutinefunction(self.on_transcript):
+                    await self.on_transcript(text)
+                else:
+                    self.on_transcript(text)
+        # reset
+        self.is_speech_active = False
+        self.speech_buffer = np.array([], dtype=np.float32)
+        self.silence_counter = 0
+
+
     def stop(self):
         self.is_running = False
