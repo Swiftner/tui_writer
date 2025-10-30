@@ -15,7 +15,7 @@ from textual.containers import Container, HorizontalGroup, CenterMiddle
 from textual.widgets import Header, Footer, Static, Digits, Button, Label, Log, Select
 
 from .live import LiveTranscriber
-from .ai import start_session, apply_instruction, current_transcript, reset_session
+from .ai import start_session, apply_instruction, reset_session
 
 # %% ../nbs/05_tui.ipynb 3
 TEXTUAL_CSS = """
