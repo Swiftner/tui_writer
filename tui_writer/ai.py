@@ -20,7 +20,7 @@ _client = OpenAI(api_key=_api_key) if _api_key else None
 __all__ = ['Scope', 'Targeting', 'ReplaceAllOp', 'RegexReplaceOp', 'InsertAtOp', 'InsertAfterOp', 'DeleteOp', 'ReplaceFirstOp',
            'InsertBeforeOp', 'PrependOp', 'AppendOp', 'DeleteRegexOp', 'DeleteRangeOp', 'DeleteBetweenOp', 'WrapWithOp',
            'NormalizeWhitespaceOp', 'SetLineTextOp', 'InsertLineBeforeOp', 'InsertLineAfterOp', 'DeleteLineOp',
-           'EditPlan', 'has_session', 'start_session', 'apply_instruction', 'current_transcript', 'reset_session']
+           'EditPlan', 'has_session', 'start_session', 'apply_instruction', 'reset_session']
 
 # %% ../nbs/01_ai.ipynb 5
 Scope = Literal["global", "line", "line_range", "between_markers"]
@@ -248,16 +248,14 @@ def _new_conversation(transcript: str) -> List[Dict[str, str]]:
         {
             "role": "system",
             "content": (
-                "You output EditPlan JSON only.\n"
-                "- Format: {\"ops\":[...]} (no text)\n"
-                "- Use the most specific op; avoid generic delete/replace if a line op fits\n"
-                "- line_index is 0-based (line 1 → 0)\n"
-                "- Each/every line: regex_replace with anchors ((?m)^ for prepend, (?m)$ for append)\n"
-                "- Last line: delete via pattern '(?:^|\\n)[^\\n]*\\Z'\n"
-                "- End of document insert: pattern '\\Z'\n"
-                "- Only include 'target' if nth/all/scope/ignore_case are clearly required\n"
-                "- Never guess values; omit optional fields when not needed\n"
-            ),
+                "You must output only valid EditPlan JSON.\n"
+                "- Format: {\"ops\": [...]} — no text, no explanations.\n"
+                "- Always use the most specific operation (e.g., delete_line, insert_line, replace_line).\n"
+                "- line_index is 0-based (line 1 = 0).\n"
+                "- Include 'target' only when fields like nth, all, scope, or ignore_case are explicitly needed.\n"
+                "- Never guess values; omit optional fields unless clearly required.\n"
+                "- The final output must be valid JSON that matches the EditPlan schema."
+            )
         },
         {
             "role": "assistant",
@@ -606,10 +604,6 @@ def apply_instruction(instruction: str) -> str:
     _current = _apply_plan(_current, plan)
     _set_current_transcript(_current)
     return _current, plan
-
-def current_transcript() -> str:
-    """Get the latest edited transcript (or '' if none)."""
-    return _current or ""
 
 def reset_session() -> None:
     """Clear session state."""

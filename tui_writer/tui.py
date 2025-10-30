@@ -11,11 +11,11 @@ import asyncio
 from textual import on, events
 from textual.app import App, ComposeResult
 from textual.reactive import reactive
-from textual.containers import Container, VerticalGroup, Grid, HorizontalGroup, CenterMiddle, Horizontal
-from textual.widgets import Header, Footer, Static, Digits, Button, Label, TextArea, Log, Select
+from textual.containers import Container, HorizontalGroup, CenterMiddle
+from textual.widgets import Header, Footer, Static, Digits, Button, Label, Log, Select
 
 from .live import LiveTranscriber
-from .ai import has_session, start_session, apply_instruction, current_transcript, reset_session
+from .ai import start_session, apply_instruction, current_transcript, reset_session
 
 # %% ../nbs/05_tui.ipynb 3
 TEXTUAL_CSS = """
