@@ -15,7 +15,7 @@ from textual.containers import Container, Horizontal, Vertical, Grid
 from textual.screen import ModalScreen
 from textual.message import Message
 from textual.widget import Widget
-from textual.widgets import Header, Footer, Static, Digits, Button, Label, Log, Select, Rule
+from textual.widgets import Header, Footer, Static, Digits, Button, Label, Log, Select, Rule, Collapsible
 
 from .live import LiveTranscriber
 from .ai import start_session, apply_instruction, reset_session
@@ -28,36 +28,11 @@ TEXTUAL_CSS = """
     Header {
         background: $background;
     }
-
-    #top-bar {
-        hatch: cross $warning 50%;
-        align: center middle;
-        height: auto;
-        margin: 0 3;
-    }
-
-    .recording #top-bar {
-        hatch: right $error 50%;
-    }
-
-    #status {
-        hatch: cross $warning 10%;
-        width: 50;
-        content-align: center middle;
-        padding: 1 0;
-    }
     .recording {
-        color: $text-error;
+        background: $error;
     }
 
-    #media-controls {
-        hatch: cross $warning 10%;
-        width: 50;
-        align: center middle;
-        height: auto;
-        padding: 1 0;
-    }
-    
+
     #main-textarea {
         hatch: horizontal $boost 80%;
         background: $boost;
@@ -233,8 +208,6 @@ class TranscriptionTUI(App):
     - Event handlers (buttons, keybindings) change state and call those methods.
     """
 
-    TITLE = "TUI Writer"
-    SUB_TITLE = "Design Template"
     CSS = TEXTUAL_CSS
     AUTO_FOCUS = False
 
@@ -248,41 +221,24 @@ class TranscriptionTUI(App):
         ("q", "quit", "Quit"),
         ("space", "toggle_recording", "Start/Stop"),
         ("s", "settings_modal", "Settings"),
+        ("e", "make_edits", "Talk to edit")
     ]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Async background task for transcription loop
         self._task: asyncio.Task | None = None
-        # The active LiveTranscriber instance
         self._transcriber: LiveTranscriber | None = None
-        # Full transcript text accumulated so far
         self.all_chunks: str = ""
-        # Default Whisper model name
+
         self.whisper_model = "base"
-        # Default whisper language
         self.language = "en"
 
     def compose(self) -> ComposeResult:
         """Construct and layout all UI widgets."""
-        self.start_btn = Button.error("● REC <space>", id="start")
-        self.stop_btn = Button("◼ STOP <space>", id="stop")
 
         yield Header(show_clock=True)
 
-        # Top section (status + info + current operations)
-        with Container(id="top-bar"):
-            yield Static("○ STANDBY", id="status")
-            with Horizontal(id="media-controls"):
-                yield self.start_btn
-                yield self.stop_btn
         yield Log(id="main-textarea", auto_scroll=True)
-
-       
-
-
-        # Bottom section (main transcript log)
-        
         yield Footer()
 
     # Action methods triggered by key bindings, refers to button-methods
@@ -302,41 +258,36 @@ class TranscriptionTUI(App):
         self.whisper_model = settings[0]
         self.language = settings[1]
 
-    # Button event handlers (mapped in the UI)
-    @on(Button.Pressed, "#start")
-    async def _on_start(self, _):
-        """Start button pressed."""
-        if self.state is RecordingState.IDLE:
-            await self._start()
-            self.state = RecordingState.RECORDING
-
-    @on(Button.Pressed, "#stop")
-    async def _on_stop(self, _):
-        """Stop button pressed."""
-        if self.state is RecordingState.RECORDING:
-            await self._stop()
-            self.state = RecordingState.IDLE
-
-    async def on_key(self, event: events.Key) -> None:
-        """Press 'e' to toggle live edit mode."""
-        if event.key != "e":
-            return
+    async def action_make_edits(self) -> None:
         if self.state is not RecordingState.EDIT:
+            if not self.all_chunks:
+                self.notify("There is nothing to apply edits on", severity="warning", title="WARNING try again")
+                return
+            
+            self.edit_instructions = ""
             await self._start_edit()
             self.state = RecordingState.EDIT 
         else:
             # Leaving edit mode
             self.main_textarea.loading = True
-            await self._stop_edit()
+            await self._stop()
+
+            if len(self.edit_instructions.strip().split()) < 2:
+                self.notify("Too short edit instruction!", severity="warning", title="WARNING try again")
+            else:
+                self.all_chunks, self.plan = apply_instruction(self.edit_instructions)
+                reset_session()
+                self.main_textarea.clear()
+                self.main_textarea.write_lines(self.all_chunks.splitlines(True))
+            
             self.main_textarea.loading = False
             self.plan = None
-            self.edit_instructions = ""
             self.state = RecordingState.IDLE
 
     # Live edit mode helpers
     async def _start_edit(self) -> None:
-        """Start edit session and initialize and start transcriber."""
-        self.current_transcript = start_session(self.all_chunks)
+        """Start edit session and transcriber."""
+        start_session(self.all_chunks)
         self._transcriber = LiveTranscriber(
             model_id=self.whisper_model,
             language=self.language,
@@ -347,25 +298,8 @@ class TranscriptionTUI(App):
         )
         self._task = asyncio.create_task(self._transcriber.start())
 
-    async def _stop_edit(self) -> None:
-        """Stop edit mode and apply queued voice edit instructions."""
-        try:
-            if self._transcriber:
-                await self._transcriber.stop()  # ← Added await!
-            if self._task:
-                await self._task
-        finally:
-            self._transcriber = None
-            self._task = None
-            # Apply accumulated voice instructions to current transcript
-            self.current_transcript, self.plan = apply_instruction(self.edit_instructions)
-            reset_session()
-            self.all_chunks = self.current_transcript
-            # Show resulting plan and updated transcript in UI
-            ops_text = f"Plan: {self.plan.model_dump_json(indent=2)}"
-            self.transcript_block.update(ops_text)
-            self.main_textarea.clear()
-            self.main_textarea.write_lines(self.all_chunks.splitlines(True))
+
+
 
     # Transcription lifecycle
     async def _start(self) -> None:
@@ -376,8 +310,6 @@ class TranscriptionTUI(App):
             vad_threshold=0.5, min_speech_duration_ms=250, min_silence_duration_ms=500,
         )
         self._task = asyncio.create_task(self._transcriber.start())
-        self.start_btn.disabled = True
-        self.stop_btn.disabled = False
 
     async def _stop(self) -> None:
         """Stop active transcriber and cleanup task."""
@@ -389,8 +321,6 @@ class TranscriptionTUI(App):
         finally:
             self._transcriber = None
             self._task = None
-            self.start_btn.disabled = False
-            self.stop_btn.disabled = True
 
     # Callback handlers
     def on_transcript_chunk(self, text: str) -> None:
@@ -412,26 +342,26 @@ class TranscriptionTUI(App):
     # UI state watcher (reactive)
     def watch_state(self, new_state: RecordingState) -> None:
         """Reactively update UI when recording state changes."""
-        self.status_text.remove_class("recording")
+        self.sub_title = ""
 
         match new_state:
             case RecordingState.IDLE:
-                self.status_text.update("○ STANDBY")
+                self.title = "○ STANDBY"
+                self.header.remove_class("recording")
             case RecordingState.RECORDING:
-                self.status_text.update("● RECORDING...")
-                self.status_text.add_class("recording")
+                self.title = "● RECORDING"
+                self.header.add_class("recording")
             case RecordingState.EDIT:
-                self.status_text.update("● LIVE EDITING...")
-                self.status_text.add_class("recording")
+                self.title = "● TALK TO EDIT"
+                self.sub_title = "applies edit when 'e' is pressed again"
 
     # Mount / Unmount lifecycle
     def on_mount(self) -> None:
         """Initialize widget references and set titles."""
-        self.status_text: Static = self.query_one("#status", Static)
+        self.title = "○ STANDBY"
+        self.header = self.query_one(Header)
         self.main_textarea: Log = self.query_one("#main-textarea", Log)
-        self.stop_btn.disabled = True
         self.theme = "textual-dark"
-        self.main_textarea.write_line("This text is just for testing.\nIt's already loaded once i start the tui.\nA new line is started once you start talking again.")
 
     async def on_unmount(self) -> None:
         """Cleanly stop background tasks when app closes."""

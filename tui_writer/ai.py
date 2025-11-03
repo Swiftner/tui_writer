@@ -588,12 +588,11 @@ def has_session() -> bool:
     """Return True if an edit session is initialized."""
     return _messages is not None and _current is not None
 
-def start_session(initial_transcript: str) -> str:
+def start_session(initial_transcript: str) -> None:
     """Seed a new session with the initial transcript and return it."""
     global _messages, _current
     _current = initial_transcript
     _messages = _new_conversation(initial_transcript)
-    return _current
 
 def apply_instruction(instruction: str) -> str:
     """Apply an instruction to the current transcript and return the updated text."""
