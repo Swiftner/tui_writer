@@ -128,13 +128,7 @@ class LiveTranscriber:
             language=self.language,
             beam_size=1,
             condition_on_previous_text=False,
-            vad_filter=True,
-            vad_parameters=dict(
-                threshold=0.4,
-                min_speech_duration_ms=int(self.min_speech_samples * 1000 / self.sample_rate),
-                max_speech_duration_s=float("inf"),
-                min_silence_duration_ms=200,
-            ),
+            vad_filter=False,
         )
         return " ".join(s.text.strip() for s in segments).strip()
 
