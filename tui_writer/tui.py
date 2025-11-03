@@ -31,11 +31,9 @@ TEXTUAL_CSS = """
 
     #top-bar {
         hatch: cross $warning 50%;
-        width: 90%;
-        min-width: 100;
         align: center middle;
-        margin-top: 1;
         height: auto;
+        margin: 0 3;
     }
 
     .recording #top-bar {
@@ -47,6 +45,9 @@ TEXTUAL_CSS = """
         width: 50;
         content-align: center middle;
         padding: 1 0;
+    }
+    .recording {
+        color: $text-error;
     }
 
     #media-controls {
@@ -60,8 +61,8 @@ TEXTUAL_CSS = """
     #main-textarea {
         hatch: horizontal $boost 80%;
         background: $boost;
-        width: 90%;
-        min-width: 100;
+        margin: 0 3;
+        margin-bottom: 1;
         padding: 2 3;
     }
 
@@ -216,7 +217,6 @@ class RecordingState(Enum):
     """High-level states the TUI can be in."""
     IDLE = auto()       # Not recording
     RECORDING = auto()  # Live transcription is running
-    #PAUSED = auto()     # Recording stopped but session kept
     EDIT = auto()       # Voice-based editing mode
 
 class TranscriptionTUI(App):
@@ -298,9 +298,9 @@ class TranscriptionTUI(App):
     def action_settings_modal(self) -> None:
         self.push_screen(SettingsModal(self.whisper_model, self.language), self.apply_settings)
 
-    def apply_settings(self, ting):
-        self.whisper_model = ting[0]
-        self.language = ting[1]
+    def apply_settings(self, settings):
+        self.whisper_model = settings[0]
+        self.language = settings[1]
 
     # Button event handlers (mapped in the UI)
     @on(Button.Pressed, "#start")
@@ -326,10 +326,8 @@ class TranscriptionTUI(App):
             self.state = RecordingState.EDIT 
         else:
             # Leaving edit mode
-            self.transcript_block.loading = True
             self.main_textarea.loading = True
             await self._stop_edit()
-            self.transcript_block.loading = False
             self.main_textarea.loading = False
             self.plan = None
             self.edit_instructions = ""
@@ -418,21 +416,23 @@ class TranscriptionTUI(App):
     # UI state watcher (reactive)
     def watch_state(self, new_state: RecordingState) -> None:
         """Reactively update UI when recording state changes."""
+        self.status_text.remove_class("recording")
 
         match new_state:
             case RecordingState.IDLE:
                 self.status_text.update("○ STANDBY")
             case RecordingState.RECORDING:
                 self.status_text.update("● RECORDING...")
+                self.status_text.add_class("recording")
             case RecordingState.EDIT:
                 self.status_text.update("● LIVE EDITING...")
+                self.status_text.add_class("recording")
 
     # Mount / Unmount lifecycle
     def on_mount(self) -> None:
         """Initialize widget references and set titles."""
         self.status_text: Static = self.query_one("#status", Static)
         self.main_textarea: Log = self.query_one("#main-textarea", Log)
-        self.stop_btn: Button = self.query_one("#stop", Button)
         self.stop_btn.disabled = True
         self.theme = "textual-dark"
         self.main_textarea.write_line("This text is just for testing.\nIt's already loaded once i start the tui.\nA new line is started once you start talking again.")
