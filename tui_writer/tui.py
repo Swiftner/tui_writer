@@ -194,7 +194,7 @@ class SettingsModal(ModalScreen):
                         id="whisper-language"
                 )
                 yield Container(
-                    Button.success("Save (s)", id="save"),
+                    Button.success("Save", id="save"),
                     id="save-container",
                 )
 
@@ -351,11 +351,9 @@ class TranscriptionTUI(App):
         """Stop edit mode and apply queued voice edit instructions."""
         try:
             if self._transcriber:
-                self._transcriber.stop()
+                await self._transcriber.stop()  # ← Added await!
             if self._task:
                 await self._task
-            if self._transcriber:
-                await self._transcriber.flush()
         finally:
             self._transcriber = None
             self._task = None
@@ -385,11 +383,9 @@ class TranscriptionTUI(App):
         """Stop active transcriber and cleanup task."""
         try:
             if self._transcriber:
-                self._transcriber.stop()
+                await self._transcriber.stop()  # ← Added await!
             if self._task:
                 await self._task
-            if self._transcriber:
-                await self._transcriber.flush()
         finally:
             self._transcriber = None
             self._task = None
