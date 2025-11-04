@@ -11,7 +11,7 @@ import asyncio
 from textual import on, events
 from textual.app import App, ComposeResult
 from textual.reactive import reactive
-from textual.containers import Container, Horizontal, Vertical, Grid
+from textual.containers import Container, HorizontalGroup, Vertical, Grid, Center
 from textual.screen import ModalScreen
 from textual.message import Message
 from textual.widget import Widget
@@ -35,18 +35,10 @@ TEXTUAL_CSS = """
     #main-textarea {
         hatch: horizontal $boost 80%;
         background: $boost;
-        margin: 0 3;
-        margin-bottom: 1;
+        margin: 1 3;
         padding: 2 3;
     }
-
-    Collapsible {
-        margin: 0 3;
-        margin-bottom: 1;
-        padding-bottom: 0;
-        border: tall $panel-lighten-3;
-    }
-
+    
     HelpModal {
         align: center middle;
     }
@@ -59,6 +51,7 @@ TEXTUAL_CSS = """
         height: 90%;
         max-height: 70;
     }
+
     
     SettingsModal {
         align: center middle;
@@ -94,7 +87,6 @@ TEXTUAL_CSS = """
     }
     #save-container {
         column-span: 3;
-        align: right bottom;
     }
 """
 
@@ -184,7 +176,7 @@ class SettingsModal(ModalScreen):
                         value=self.language,
                         id="whisper-language"
                 )
-                yield Container(
+                yield Center(
                     Button.success("Save", id="save"),
                     id="save-container",
                 )
@@ -234,6 +226,10 @@ class HelpModal(ModalScreen):
             markdown_viewer = MarkdownViewer(HELP_MARKDOWN, show_table_of_contents=True)
             markdown_viewer.code_indent_guides = False
             yield markdown_viewer
+            yield Center(Button("Close (c)", variant="primary"))
+
+    def on_button_pressed(self) -> None:
+        self.app.pop_screen()
 
     def key_c(self) -> None:
         self.app.pop_screen()
@@ -273,12 +269,7 @@ class TranscriptionTUI(App):
     def compose(self) -> ComposeResult:
         """Construct and layout all UI widgets."""
         yield Header(show_clock=True)
-        
         yield Log(id="main-textarea", auto_scroll=True)
-
-        with Collapsible(title="Edit Manager"):
-            yield Label("- Press 'e' for 'Talk to Edit'")
-            yield Label("- Any recent edits will appear here")
         yield Footer()
 
     # Action methods triggered by key bindings, refers to button-methods
@@ -288,6 +279,7 @@ class TranscriptionTUI(App):
             await self._start()
             self.state = RecordingState.RECORDING
         elif self.state is RecordingState.RECORDING:
+            self.title = "STOPPING..."
             await self._stop()
             self.state = RecordingState.IDLE
         
