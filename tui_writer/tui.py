@@ -16,7 +16,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Header, Footer, Static, Button, Log, Select, Rule, MarkdownViewer
 
 from .live import LiveTranscriber
-from .ai import start_session, apply_instruction, reset_session
+from .ai import apply_instruction
 
 # %% ../nbs/05_tui.ipynb 3
 TEXTUAL_CSS = """
@@ -264,7 +264,6 @@ class TranscriptionTUI(App):
         self._task: asyncio.Task | None = None
         self._transcriber: LiveTranscriber | None = None
         self.all_chunks: str = ""
-
         self.whisper_model = "base"
         self.language = "en"
 
@@ -319,8 +318,7 @@ class TranscriptionTUI(App):
             if len(self.edit_instructions.strip().split()) < 2:
                 self.notify("Too short edit instruction!", severity="warning", title="WARNING!")
             else:
-                self.all_chunks, self.plan = apply_instruction(self.edit_instructions)
-                reset_session()
+                self.all_chunks, self.plan = apply_instruction(self.all_chunks, self.edit_instructions)
                 self.main_textarea.clear()
                 self.main_textarea.write_lines(self.all_chunks.splitlines(True))
             
@@ -331,7 +329,6 @@ class TranscriptionTUI(App):
     # Live edit mode helpers
     async def _start_edit(self) -> None:
         """Start edit session and transcriber."""
-        start_session(self.all_chunks)
         self._transcriber = LiveTranscriber(
             model_id=self.whisper_model,
             language=self.language,

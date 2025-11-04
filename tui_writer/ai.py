@@ -20,7 +20,7 @@ _client = OpenAI(api_key=_api_key) if _api_key else None
 __all__ = ['Scope', 'Targeting', 'ReplaceAllOp', 'RegexReplaceOp', 'InsertAtOp', 'InsertAfterOp', 'DeleteOp', 'ReplaceFirstOp',
            'InsertBeforeOp', 'PrependOp', 'AppendOp', 'DeleteRegexOp', 'DeleteRangeOp', 'DeleteBetweenOp', 'WrapWithOp',
            'NormalizeWhitespaceOp', 'SetLineTextOp', 'InsertLineBeforeOp', 'InsertLineAfterOp', 'DeleteLineOp',
-           'EditPlan', 'has_session', 'start_session', 'apply_instruction', 'reset_session']
+           'EditPlan', 'apply_instruction']
 
 # %% ../nbs/01_ai.ipynb 5
 Scope = Literal["global", "line", "line_range", "between_markers"]
@@ -238,13 +238,18 @@ class EditPlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 # %% ../nbs/01_ai.ipynb 7
-# --- session state (module-level) ---
-_messages: List[Dict[str, str]] | None = None
-_current: str | None = None
+def _plan_edits(transcript: str, instruction: str, model: str = "gpt-4o-mini") -> EditPlan:
+    """
+    Append a user instruction, call the model with structured output, and return the parsed plan.
+    """
+    global _client
 
-def _new_conversation(transcript: str) -> List[Dict[str, str]]:
-    """Create a new message list with system + assistant context."""
-    return [
+    if _client is None:
+        raise RuntimeError(
+            "OpenAI client not initialized. Set OPENAI_API_KEY in your .env file."
+        )
+
+    messages = [
         {
             "role": "system",
             "content": (
@@ -261,40 +266,15 @@ def _new_conversation(transcript: str) -> List[Dict[str, str]]:
             "role": "assistant",
             "content": f"Current text to edit:\n{transcript}",
         },
+        {
+            "role": "user",
+            "content": f"Instruction: {instruction}"
+        }
     ]
-
-
-def _set_current_transcript(new_transcript: str) -> None:
-    global _messages
-    # replace the single assistant transcript message
-    for m in _messages:
-        if m.get("role") == "assistant":
-            m["content"] = f"Current text to edit:\n{new_transcript}"
-            return
-    # Fallback: insert one if missing
-    _messages.insert(1, {
-        "role": "assistant",
-        "content": f"Current text to edit:\n{new_transcript}",
-    })
-
-# %% ../nbs/01_ai.ipynb 9
-def _plan_edits(instruction: str, model: str = "gpt-4o-mini") -> EditPlan:
-    """
-    Append a user instruction, call the model with structured output, and return the parsed plan.
-    """
-    global _messages, _client
-
-    if _client is None:
-        raise RuntimeError(
-            "OpenAI client not initialized. Set OPENAI_API_KEY in your .env file."
-        )
-
-    # Add the new instruction to the conversation
-    _messages.append({"role": "user", "content": f"Instruction: {instruction}"})
 
     completion = _client.chat.completions.parse(
         model=model,
-        messages=_messages,
+        messages=messages,
         response_format=EditPlan,  # enforce strict structured output
         temperature=0
     )
@@ -583,28 +563,9 @@ def _apply_plan(transcript: str, plan: EditPlan) -> str:
 
     return updated
 
-# %% ../nbs/01_ai.ipynb 11
-def has_session() -> bool:
-    """Return True if an edit session is initialized."""
-    return _messages is not None and _current is not None
-
-def start_session(initial_transcript: str) -> None:
-    """Seed a new session with the initial transcript and return it."""
-    global _messages, _current
-    _current = initial_transcript
-    _messages = _new_conversation(initial_transcript)
-
-def apply_instruction(instruction: str) -> str:
+# %% ../nbs/01_ai.ipynb 9
+def apply_instruction(transcript: str, instruction: str) -> str:
     """Apply an instruction to the current transcript and return the updated text."""
-    global _current
-    if not has_session():
-        raise RuntimeError("No session. Call start_session() first.")
-    plan = _plan_edits(instruction)
-    _current = _apply_plan(_current, plan)
-    _set_current_transcript(_current)
-    return _current, plan
-
-def reset_session() -> None:
-    """Clear session state."""
-    global _messages, _current
-    _messages, _current = None, None
+    plan = _plan_edits(transcript, instruction)
+    transcript = _apply_plan(transcript, plan)
+    return transcript, plan
