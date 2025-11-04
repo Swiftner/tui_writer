@@ -4,18 +4,16 @@
 __all__ = ['TEXTUAL_CSS', 'HELP_MARKDOWN', 'SettingsModal', 'HelpModal', 'RecordingState', 'TranscriptionTUI']
 
 # %% ../nbs/05_tui.ipynb 2
-from time import monotonic
 from enum import Enum, auto
 import asyncio
+import pyperclip
 
-from textual import on, events
+from textual import on
 from textual.app import App, ComposeResult
 from textual.reactive import reactive
-from textual.containers import Container, HorizontalGroup, Vertical, Grid, Center
+from textual.containers import Container, Grid, Center
 from textual.screen import ModalScreen
-from textual.message import Message
-from textual.widget import Widget
-from textual.widgets import Header, Footer, Static, Digits, Button, Label, Log, Select, Rule, Collapsible, MarkdownViewer
+from textual.widgets import Header, Footer, Static, Button, Log, Select, Rule, MarkdownViewer
 
 from .live import LiveTranscriber
 from .ai import start_session, apply_instruction, reset_session
@@ -177,7 +175,7 @@ class SettingsModal(ModalScreen):
                         id="whisper-language"
                 )
                 yield Center(
-                    Button.success("Save", id="save"),
+                    Button.success("Close (esc)", id="save"),
                     id="save-container",
                 )
 
@@ -190,6 +188,9 @@ class SettingsModal(ModalScreen):
     @on(Select.Changed, "#whisper-language")
     def on_language_changed(self, event: Select.Changed) -> None:
         self.language = str(event.value)
+
+    def key_escape(self) -> None:
+        self.dismiss([self.model, self.language])
 
     def on_button_pressed(self) -> None:
         self.dismiss([self.model, self.language])
@@ -226,12 +227,12 @@ class HelpModal(ModalScreen):
             markdown_viewer = MarkdownViewer(HELP_MARKDOWN, show_table_of_contents=True)
             markdown_viewer.code_indent_guides = False
             yield markdown_viewer
-            yield Center(Button("Close (c)", variant="primary"))
+            yield Center(Button("Close (esc)", variant="primary"))
 
     def on_button_pressed(self) -> None:
         self.app.pop_screen()
 
-    def key_c(self) -> None:
+    def key_escape(self) -> None:
         self.app.pop_screen()
 
 # %% ../nbs/05_tui.ipynb 7
@@ -254,7 +255,8 @@ class TranscriptionTUI(App):
         ("?", "help_modal", "Help"),
         ("s", "settings_modal", "Settings"),
         ("space", "toggle_recording", "Start/Stop"),
-        ("e", "make_edits", "Talk to edit")
+        ("e", "make_edits", "Talk to edit"),
+        ("c", "copy_transcription", "Copy transcript")
     ]
 
     def __init__(self, **kwargs):
@@ -282,7 +284,14 @@ class TranscriptionTUI(App):
             self.title = "STOPPING..."
             await self._stop()
             self.state = RecordingState.IDLE
-        
+
+    def action_copy_transcription(self) -> None:
+        if self.all_chunks:
+            pyperclip.copy(self.all_chunks)
+            self.notify("Copied transcription", title="Copied to clipboard!")
+        else:
+            self.notify("Nothing to copy yet!", severity="warning", title="Oops!")
+
     def action_settings_modal(self) -> None:
         self.push_screen(SettingsModal(self.whisper_model, self.language), self.apply_settings)
 
@@ -334,8 +343,6 @@ class TranscriptionTUI(App):
         self._task = asyncio.create_task(self._transcriber.start())
 
 
-
-
     # Transcription lifecycle
     async def _start(self) -> None:
         """Initialize and start live transcription."""
@@ -361,7 +368,7 @@ class TranscriptionTUI(App):
     def on_transcript_chunk(self, text: str) -> None:
         """Called whenever the transcriber produces a new text chunk."""
         text = (text or "").strip()
-        if not text or self.state is RecordingState.IDLE: # possible dont need to check self.state
+        if not text:
             return
         self.all_chunks += text + "\n"
         self.main_textarea.write_line(text)
@@ -388,7 +395,8 @@ class TranscriptionTUI(App):
                 self.header.add_class("recording")
             case RecordingState.EDIT:
                 self.title = "● TALK TO EDIT"
-                self.sub_title = "applies edit when 'e' is pressed again"
+                self.sub_title = "press 'e' to apply the instructions"
+                self.header.add_class("recording")
 
     # Mount / Unmount lifecycle
     def on_mount(self) -> None:
