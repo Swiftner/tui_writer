@@ -2,8 +2,8 @@
 
 # %% auto 0
 __all__ = ['TEXTUAL_CSS', 'HELP_MARKDOWN', 'DEFAULT_VAD_THRESHOLD', 'DEFAULT_MIN_SPEECH_DURATION_MS',
-           'DEFAULT_MIN_SILENCE_DURATION_MS', 'MIN_EDIT_INSTRUCTION_WORDS', 'SettingsModal', 'HelpModal',
-           'RecordingState', 'TranscriptionTUI']
+           'DEFAULT_MIN_SILENCE_DURATION_MS', 'MIN_EDIT_INSTRUCTION_WORDS', 'SettingsModal', 'AISettingsModal',
+           'HelpModal', 'RecordingState', 'TranscriptionTUI']
 
 # %% ../nbs/05_tui.ipynb 2
 from enum import Enum, auto
@@ -13,12 +13,12 @@ import pyperclip
 from textual import on
 from textual.app import App, ComposeResult
 from textual.reactive import reactive
-from textual.containers import Container, Grid, Center
+from textual.containers import Container, Grid, Center, Horizontal, Vertical, HorizontalGroup
 from textual.screen import ModalScreen
-from textual.widgets import Header, Footer, Static, Button, Log, Select, Rule, MarkdownViewer
+from textual.widgets import Header, Footer, Static, Button, Log, Select, Rule, MarkdownViewer, Input, LoadingIndicator
 
 from .live import LiveTranscriber
-from .ai import apply_instruction
+from .ai import apply_instruction, get_ollama_status, get_available_models, download_ollama_model, setup_ollama_client, setup_openai_client, get_current_model
 
 # %% ../nbs/05_tui.ipynb 3
 TEXTUAL_CSS = """
@@ -64,6 +64,19 @@ TEXTUAL_CSS = """
         align: center top;
         height: 20;
     }
+    
+    AISettingsModal {
+        align: center middle;
+    }
+    #ai-settings-modal {
+        border: thick $background 80%;
+        background: $surface;
+        width: 120;
+        padding: 0 2;
+        align: center top;
+        height: 40;
+    }
+    
     #modal-header {
         content-align: center middle;
         margin: 1 0;
@@ -78,6 +91,14 @@ TEXTUAL_CSS = """
         grid-columns: 1fr;
         grid-gutter: 1;
     }
+    #ai-settings-grid {
+        layout: grid;
+        grid-size: 3;
+        grid-rows: 1fr;
+        grid-columns: 1fr;
+        grid-gutter: 1;
+    }
+
     .select-text {
         height: 100%;
         content-align: center middle;
@@ -85,8 +106,23 @@ TEXTUAL_CSS = """
     Select {
         column-span: 2;
     }
+    Input {
+        column-span: 2;
+    }
     #settings-actions {
         column-span: 3;
+    }
+    #ai-settings-actions {
+        width: auto;
+    }
+    .status-good {
+        color: $success;
+    }
+    .status-bad {
+        color: $error;
+    }
+    .status-warning {
+        color: $warning;
     }
 """
 
@@ -199,6 +235,173 @@ class SettingsModal(ModalScreen):
 
 
 # %% ../nbs/05_tui.ipynb 5
+class AISettingsModal(ModalScreen):
+    """Modal for managing AI model settings and Ollama installation."""
+
+    def __init__(self):
+        self.ollama_status = get_ollama_status()
+        self.available_models = get_available_models()
+        self.current_model = get_current_model()
+        self.provider = "ollama" if self.current_model in self.available_models["ollama"] else "openai"
+        super().__init__()
+
+    def compose(self) -> ComposeResult:
+        with Container(id="ai-settings-modal"):
+            yield Static("AI MODEL SETTINGS", id="modal-header")
+            yield Rule(line_style="heavy")
+            # Status section
+            yield Static("Ollama Status:")
+            status_text = "✓ Running" if self.ollama_status["running"] else "✗ Not running"
+            status_class = "status-good" if self.ollama_status["running"] else "status-bad"
+            yield Static(status_text, classes=f"{status_class}")
+            
+            with Grid(id="ai-settings-grid"):
+                
+                # Provider selection
+                yield Static("AI Provider:", classes="select-text")
+                provider_options = [("OpenAI API", "openai")]
+                if self.ollama_status["running"]:
+                    provider_options.insert(0, ("Ollama (Local)", "ollama"))
+                yield Select(
+                    options=provider_options,
+                    allow_blank=False,
+                    value=self.provider,
+                    id="ai-provider"
+                )
+                
+                # Model selection
+                yield Static("Model:", classes="select-text")
+                model_options = []
+                if self.provider == "ollama" and self.available_models["ollama"]:
+                    model_options = [(model, model) for model in self.available_models["ollama"]]
+                elif self.provider == "openai":
+                    model_options = [(model, model) for model in self.available_models["openai"]]
+                
+                yield Select(
+                    options=model_options,
+                    allow_blank=False,
+                    value=self.current_model if model_options else None,
+                    id="ai-model"
+                )
+                
+                # API Key input (for OpenAI)
+                yield Static("API Key:", classes="select-text", id="api-key-text")
+                yield Input(
+                    placeholder="Enter OpenAI API key...",
+                    password=True,
+                    id="api-key-input"
+                )
+            
+            # Download section for Ollama models
+            if self.ollama_status["running"]:
+                with Container(id="download-section"):
+                    yield Static("Download Popular Models:")
+                    with Horizontal():
+                        yield Select(
+                            options=[(f"{m['name']} - {m['description']}", m['name']) 
+                                   for m in self.ollama_status["popular_models"]],
+                            allow_blank=True,
+                            id="download-model-select"
+                        )
+                        yield Button("Download", id="download-model-btn", variant="success")
+            
+            # Installation instructions if Ollama not installed
+            if not self.ollama_status["installed"]:
+                with Container():
+                    yield Static("Ollama Not Installed", classes="status-warning")
+                    yield Static(f"Install: {self.ollama_status['install_instructions']}")
+            
+            with Center():
+                yield HorizontalGroup(
+                    Button("Apply", id="apply-ai-settings", variant="success"),
+                    Button("Cancel", id="cancel-ai-settings", variant="default"),
+                    id="ai-settings-actions"
+                )
+
+    @on(Select.Changed, "#ai-provider")
+    def on_provider_changed(self, event: Select.Changed) -> None:
+        self.provider = str(event.value)
+        # Update model options based on provider
+        model_select = self.query_one("#ai-model", Select)
+        api_key_input = self.query_one("#api-key-input", Input)
+        api_key_text = self.query_one("#api-key-text", Static)
+        
+        if self.provider == "ollama":
+            model_options = [(model, model) for model in self.available_models["ollama"]]
+            api_key_input.display = False
+            api_key_text.display = False
+            # api_key_input.value = ""
+        else:  # openai
+            model_options = [(model, model) for model in self.available_models["openai"]]
+            api_key_input.display = True
+            api_key_text.display = True
+        
+        model_select.set_options(model_options)
+        if model_options:
+            model_select.value = model_options[1][1]
+
+    @on(Select.Changed, "#ai-model")
+    def on_model_changed(self, event: Select.Changed) -> None:
+        self.current_model = str(event.value)
+
+    @on(Button.Pressed, "#download-model-btn")
+    async def on_download_model(self) -> None:
+        model_select = self.query_one("#download-model-select", Select)
+        if model_select.value:
+            download_btn = self.query_one("#download-model-btn", Button)
+            download_btn.disabled = True
+            download_btn.label = "Downloading..."
+            
+            model_name = str(model_select.value)
+            success = download_ollama_model(model_name)
+            
+            if success:
+                self.notify(f"Successfully downloaded {model_name}", title="Download Complete")
+                # Refresh available models
+                self.available_models = get_available_models()
+                # Update model select options
+                model_select_widget = self.query_one("#ai-model", Select)
+                model_options = [(model, model) for model in self.available_models["ollama"]]
+                model_select_widget.set_options(model_options)
+            else:
+                self.notify(f"Failed to download {model_name}", severity="error", title="Download Failed")
+            
+            download_btn.disabled = False
+            download_btn.label = "Download"
+
+    @on(Button.Pressed, "#apply-ai-settings")
+    def on_apply_settings(self) -> None:
+        api_key_input = self.query_one("#api-key-input", Input)
+        
+        success = False
+        if self.provider == "ollama":
+            success = setup_ollama_client(self.current_model)
+            if success:
+                self.notify(f"Switched to Ollama model: {self.current_model}", title="AI Provider Updated")
+            else:
+                self.notify("Failed to setup Ollama client", severity="error", title="Setup Failed")
+        else:  # openai
+            api_key = api_key_input.value.strip()
+            if api_key:
+                success = setup_openai_client(api_key, self.current_model)
+                if success:
+                    self.notify(f"Switched to OpenAI model: {self.current_model}", title="AI Provider Updated")
+                else:
+                    self.notify("Failed to setup OpenAI client - check API key", severity="error", title="Setup Failed")
+            else:
+                self.notify("API key required for OpenAI", severity="warning", title="Missing API Key")
+        
+        if success:
+            self.dismiss(True)
+
+    @on(Button.Pressed, "#cancel-ai-settings")
+    def on_cancel_settings(self) -> None:
+        self.dismiss(False)
+
+    def key_escape(self) -> None:
+        self.dismiss(False)
+
+# %% ../nbs/05_tui.ipynb 6
 HELP_MARKDOWN = """\
 # TUI Writer
 
@@ -208,19 +411,45 @@ Help screen on how to use and customize TUI Writer.
 
 ### Live transcriber:
 
-- Press SPACE on your keyboard, you should see the top bar turn red.
+- Press **SPACE** on your keyboard, you should see the top bar turn red.
 - Simply start speaking and you should see the transcriber in action.
-- Stop transcribing by pressing SPACE again.
+- Stop transcribing by pressing **SPACE** again.
 
 ### Live editing:
 If you want to change any of the transcribed text:
 
-- Press 'e' to get started.
+- Press **'e'** to get started.
 - Audibly tell the AI what edits you want.
-- Press 'e' again to send the instruction to the AI.
+- Press **'e'** again to send the instruction to the AI.
 
 If the edit did not go as planned:
-- do this
+- Use 'e' again to make additional edits
+- Or copy the text with 'c' and edit manually
+
+## Settings & Configuration
+
+### Audio Settings (Press 's'):
+- Choose Whisper model (tiny to large-v3)
+- Select transcription language
+- Faster models = lower accuracy, slower models = better accuracy
+
+### AI Model Settings (Press 'a'):
+- Switch between OpenAI API and local Ollama models
+- Download popular Ollama models locally
+- Configure API keys and model preferences
+- Local models are private and don't require internet
+
+## Keyboard Shortcuts
+
+| Key     | Action                    |
+|---------|---------------------------|
+| SPACE   | Start/Stop recording      |
+| e       | Voice edit mode           |
+| c       | Copy transcript           |
+| s       | Audio settings            |
+| a       | AI model settings         |
+| ?       | This help screen          |
+| q       | Quit application          |
 """
 
 class HelpModal(ModalScreen):
@@ -237,14 +466,14 @@ class HelpModal(ModalScreen):
     def key_escape(self) -> None:
         self.app.pop_screen()
 
-# %% ../nbs/05_tui.ipynb 7
+# %% ../nbs/05_tui.ipynb 8
 # Constants for transcriber configuration
 DEFAULT_VAD_THRESHOLD = 0.5
 DEFAULT_MIN_SPEECH_DURATION_MS = 250
 DEFAULT_MIN_SILENCE_DURATION_MS = 500
 MIN_EDIT_INSTRUCTION_WORDS = 2
 
-# %% ../nbs/05_tui.ipynb 8
+# %% ../nbs/05_tui.ipynb 9
 class RecordingState(Enum):
     """High-level states the TUI can be in."""
     IDLE = auto()       # Not recording
@@ -259,6 +488,7 @@ class TranscriptionTUI(App):
     - Voice-controlled text editing via AI
     - Configurable models and languages
     - Copy transcription to clipboard
+    - AI model management (OpenAI/Ollama)
     """
 
     # Class attributes
@@ -269,6 +499,7 @@ class TranscriptionTUI(App):
         ("q", "quit", "Quit"),
         ("?", "help_modal", "Help"),
         ("s", "settings_modal", "Settings"),
+        ("a", "ai_settings_modal", "AI Models"),
         ("space", "toggle_recording", "Start/Stop"),
         ("e", "make_edits", "Talk to edit"),
         ("c", "copy_transcription", "Copy transcript")
@@ -299,6 +530,10 @@ class TranscriptionTUI(App):
 
     def action_settings_modal(self) -> None:
         self.push_screen(SettingsModal(self.whisper_model, self.language), self.apply_settings)
+
+    def action_ai_settings_modal(self) -> None:
+        """Open AI model settings modal."""
+        self.push_screen(AISettingsModal())
 
     async def action_toggle_recording(self) -> None:
         """Spacebar: start if idle, stop if currently recording."""
@@ -337,9 +572,12 @@ class TranscriptionTUI(App):
             if not self._is_valid_edit_instruction(self.edit_instructions):
                 self.notify("Edit instruction too short - need more detail", severity="warning", title="Invalid Edit")
             else:
-                self.full_transcript, _ = apply_instruction(self.full_transcript, self.edit_instructions)
-                self.transcript_display.clear()
-                self.transcript_display.write_lines(self.full_transcript.splitlines(True))
+                try:
+                    self.full_transcript, _ = apply_instruction(self.full_transcript, self.edit_instructions)
+                    self.transcript_display.clear()
+                    self.transcript_display.write_lines(self.full_transcript.splitlines(True))
+                except Exception as e:
+                    self.notify(f"AI Edit failed: {str(e)}", severity="error", title="Edit Error")
             
             self.transcript_display.loading = False
             self.edit_instructions = ""
@@ -400,7 +638,7 @@ class TranscriptionTUI(App):
 
         match new_state:
             case RecordingState.IDLE:
-                self.title = "○ STANDBY"
+                self.title = f"○ STANDBY ({get_current_model()})"
                 self.header.remove_class("recording")
             case RecordingState.RECORDING:
                 self.title = "● RECORDING"
@@ -413,7 +651,7 @@ class TranscriptionTUI(App):
     # === Lifecycle Hooks ===
     def on_mount(self) -> None:
         """Initialize widget references and set titles."""
-        self.title = "○ STANDBY"
+        self.title = f"○ STANDBY ({get_current_model()})"
         self.header = self.query_one(Header)
         self.transcript_display: Log = self.query_one("#transcript-display", Log)
         self.theme = "textual-dark"

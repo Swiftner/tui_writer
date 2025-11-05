@@ -2,25 +2,155 @@
 
 # %% ../nbs/01_ai.ipynb 2
 from __future__ import annotations
-from typing import List, Dict, Literal, Union, Optional
+from typing import List, Dict, Literal, Union, Optional, Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
 import re
+import subprocess
+import json
+import requests
+import platform
 
-# Load API key from .env file
-load_dotenv()
+class OllamaManager:
+    """Manages Ollama installation and model operations."""
 
-# Create client with None if no API key (will fail only when used)
-_api_key = os.getenv("OPENAI_API_KEY")
-_client = OpenAI(api_key=_api_key) if _api_key else None
+    def __init__(self):
+        self.base_url = "http://localhost:11434"
+
+    def is_installed(self) -> bool:
+        """Check if Ollama is installed and accessible."""
+        try:
+            result = subprocess.run(['ollama', '--version'],
+                                    capture_output=True, text=True, timeout=5)
+            return result.returncode == 0
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            return False
+    
+    def is_running(self) -> bool:
+        """Check if Ollama service is running."""
+        try:
+            response = requests.get(f"{self.base_url}/api/tags", timeout=5)
+            return response.status_code == 200
+        except requests.RequestException:
+            return False
+    
+    def get_install_instructions(self) -> str:
+        """Get platform-specific installation instructions."""
+        system = platform.system().lower()
+        if system == "linux":
+            return "curl -fsSL https://ollama.ai/install.sh | sh"
+        elif system == "darwin":  # macOS
+            return "Download from https://ollama.ai/download or use: brew install ollama"
+        elif system == "windows":
+            return "Download from https://ollama.ai/download"
+        else:
+            return "Visit https://ollama.ai/download for installation instructions"
+        
+    def list_models(self) -> List[Dict[str, Any]]:
+        """List all installed Ollama models."""
+        if not self.is_running():
+            return []
+        
+        try:
+            response = requests.get(f"{self.base_url}/api/tags", timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("models", [])
+        except requests.RequestException:
+            pass
+        return []
+    
+    def pull_model(self, model_name: str) -> bool:
+        """Download/pull a model using Ollama."""
+        try:
+            result = subprocess.run(['ollama', 'pull', model_name],
+                                    capture_output=True, text=True, timeout=300)
+            return result.returncode == 0
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            return False
+    
+    def get_popular_models(self) -> List[Dict[str, str]]:
+        """Get a list of popular models for easy installation."""
+        return [
+            {"name": "llama3.2", "description": "Latest Llama model (3B params)"},
+            {"name": "llama3.2:1b", "description": "Smaller Llama model (1B params)"},
+            {"name": "gemma2", "description": "Google's Gemma model"},
+            {"name": "phi3", "description": "Microsoft's Phi-3 model"},
+            {"name": "mistral", "description": "Mistral AI model"},
+            {"name": "codellama", "description": "Code-specialized Llama model"},
+            {"name": "qwen2.5", "description": "Alibaba's Qwen model"},
+        ]
+
+# Global Ollama manager instance
+_ollama_manager = OllamaManager()
+
+def get_ollama_status() -> Dict[str, Any]:
+    """Get comprehensive Ollama status information."""
+    return {
+        "installed": _ollama_manager.is_installed(),
+        "running": _ollama_manager.is_running(),
+        "install_instructions": _ollama_manager.get_install_instructions(),
+        "models": _ollama_manager.list_models(),
+        "popular_models": _ollama_manager.get_popular_models()
+    }
+
+def setup_ollama_client(model_name: str = "llama3.2") -> bool:
+    """Setup OpenAI client to use Ollama with specified model."""
+    global _client, _current_model
+
+    if not _ollama_manager.is_running():
+        return False
+    
+    try:
+        _client = OpenAI(
+            base_url='http://localhost:11434/v1/',
+            api_key='ollama'  # Ollama doesn't need a real API key
+        )
+        _current_model = model_name
+        return True
+    except Exception:
+        return False
+
+def setup_openai_client(api_key: str, model_name: str = "gpt-4o-mini") -> bool:
+    """Setup OpenAI client to use OpenAI API."""
+    global _client, _current_model
+    
+    try:
+        _client = OpenAI(api_key=api_key)
+        _current_model = model_name
+        return True
+    except Exception:
+        return False
+
+# Global variables to track current setup
+_client = None
+_current_model = ""
+
+# Try to auto-setup on import
+def _auto_setup():
+    """Try to automatically setup a client on import."""
+    global _client
+
+    # Try OpenAI first
+    load_dotenv()
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key and setup_openai_client(api_key):
+        return
+    
+    # Fall back to Ollama
+    if _ollama_manager.is_running():
+        setup_ollama_client()
+
+_auto_setup()
 
 # %% auto 0
-__all__ = ['Scope', 'Targeting', 'ReplaceAllOp', 'RegexReplaceOp', 'InsertAtOp', 'InsertAfterOp', 'DeleteOp', 'ReplaceFirstOp',
+__all__ = ['Scope', 'OllamaManager', 'get_ollama_status', 'setup_ollama_client', 'setup_openai_client', 'Targeting',
+           'ReplaceAllOp', 'RegexReplaceOp', 'InsertAtOp', 'InsertAfterOp', 'DeleteOp', 'ReplaceFirstOp',
            'InsertBeforeOp', 'PrependOp', 'AppendOp', 'DeleteRegexOp', 'DeleteRangeOp', 'DeleteBetweenOp', 'WrapWithOp',
            'NormalizeWhitespaceOp', 'SetLineTextOp', 'InsertLineBeforeOp', 'InsertLineAfterOp', 'DeleteLineOp',
-           'EditPlan', 'apply_instruction']
+           'EditPlan', 'get_current_model', 'get_available_models', 'download_ollama_model', 'apply_instruction']
 
 # %% ../nbs/01_ai.ipynb 5
 Scope = Literal["global", "line", "line_range", "between_markers"]
@@ -238,16 +368,19 @@ class EditPlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 # %% ../nbs/01_ai.ipynb 7
-def _plan_edits(transcript: str, instruction: str, model: str = "gpt-4o-mini") -> EditPlan:
+def _plan_edits(transcript: str, instruction: str, model: Optional[str] = None) -> EditPlan:
     """
     Append a user instruction, call the model with structured output, and return the parsed plan.
     """
-    global _client
+    global _client, _current_model
 
     if _client is None:
         raise RuntimeError(
-            "OpenAI client not initialized. Set OPENAI_API_KEY in your .env file."
+            "No AI client initialized. Set up OpenAI API key or start Ollama."
         )
+    
+    # Use provided model or fall back to current model
+    model_to_use = model or _current_model
 
     messages = [
         {
@@ -273,9 +406,9 @@ def _plan_edits(transcript: str, instruction: str, model: str = "gpt-4o-mini") -
     ]
 
     completion = _client.chat.completions.parse(
-        model=model,
+        model=model_to_use,
         messages=messages,
-        response_format=EditPlan,  # enforce strict structured output
+        response_format=EditPlan,
         temperature=0
     )
     msg = completion.choices[0].message
@@ -564,6 +697,31 @@ def _apply_plan(transcript: str, plan: EditPlan) -> str:
     return updated
 
 # %% ../nbs/01_ai.ipynb 9
+def get_current_model() -> str:
+    """Get the currently selected model name."""
+    return _current_model
+
+def get_available_models() -> Dict[str, List[str]]:
+    """Get available models from both OpenAI and Ollama."""
+    models = {"openai": [], "ollama": []}
+    
+    # OpenAI models (hardcoded common ones)
+    models["openai"] = [
+        "gpt-4o", "gpt-4o-mini", "gpt-4", "gpt-4-turbo", 
+        "gpt-3.5-turbo", "gpt-3.5-turbo-16k"
+    ]
+    
+    # Ollama models (from installed models)
+    ollama_models = _ollama_manager.list_models()
+    models["ollama"] = [model["name"] for model in ollama_models]
+    
+    return models
+
+def download_ollama_model(model_name: str) -> bool:
+    """Download an Ollama model."""
+    return _ollama_manager.pull_model(model_name)
+
+
 def apply_instruction(transcript: str, instruction: str) -> str:
     """Apply an instruction to the current transcript and return the updated text."""
     plan = _plan_edits(transcript, instruction)
