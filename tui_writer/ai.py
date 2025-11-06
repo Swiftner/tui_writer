@@ -86,71 +86,17 @@ class OllamaManager:
 # Global Ollama manager instance
 _ollama_manager = OllamaManager()
 
-def get_ollama_status() -> Dict[str, Any]:
-    """Get comprehensive Ollama status information."""
-    return {
-        "installed": _ollama_manager.is_installed(),
-        "running": _ollama_manager.is_running(),
-        "install_instructions": _ollama_manager.get_install_instructions(),
-        "models": _ollama_manager.list_models(),
-        "popular_models": _ollama_manager.get_popular_models()
-    }
-
-def setup_ollama_client(model_name: str = "llama3.2") -> bool:
-    """Setup OpenAI client to use Ollama with specified model."""
-    global _client, _current_model
-
-    if not _ollama_manager.is_running():
-        return False
-    
-    try:
-        _client = OpenAI(
-            base_url='http://localhost:11434/v1/',
-            api_key='ollama'  # Ollama doesn't need a real API key
-        )
-        _current_model = model_name
-        return True
-    except Exception:
-        return False
-
-def setup_openai_client(api_key: str, model_name: str = "gpt-4o-mini") -> bool:
-    """Setup OpenAI client to use OpenAI API."""
-    global _client, _current_model
-    
-    try:
-        _client = OpenAI(api_key=api_key)
-        _current_model = model_name
-        return True
-    except Exception:
-        return False
-
 # Global variables to track current setup
 _client = None
 _current_model = ""
 
-# Try to auto-setup on import
-def _auto_setup():
-    """Try to automatically setup a client on import."""
-    global _client
-
-    # Try OpenAI first
-    load_dotenv()
-    api_key = os.getenv("OPENAI_API_KEY")
-    if api_key and setup_openai_client(api_key):
-        return
-    
-    # Fall back to Ollama
-    if _ollama_manager.is_running():
-        setup_ollama_client()
-
-_auto_setup()
-
 # %% auto 0
-__all__ = ['Scope', 'OllamaManager', 'get_ollama_status', 'setup_ollama_client', 'setup_openai_client', 'Targeting',
-           'ReplaceAllOp', 'RegexReplaceOp', 'InsertAtOp', 'InsertAfterOp', 'DeleteOp', 'ReplaceFirstOp',
-           'InsertBeforeOp', 'PrependOp', 'AppendOp', 'DeleteRegexOp', 'DeleteRangeOp', 'DeleteBetweenOp', 'WrapWithOp',
-           'NormalizeWhitespaceOp', 'SetLineTextOp', 'InsertLineBeforeOp', 'InsertLineAfterOp', 'DeleteLineOp',
-           'EditPlan', 'get_current_model', 'get_available_models', 'download_ollama_model', 'apply_instruction']
+__all__ = ['Scope', 'OllamaManager', 'Targeting', 'ReplaceAllOp', 'RegexReplaceOp', 'InsertAtOp', 'InsertAfterOp', 'DeleteOp',
+           'ReplaceFirstOp', 'InsertBeforeOp', 'PrependOp', 'AppendOp', 'DeleteRegexOp', 'DeleteRangeOp',
+           'DeleteBetweenOp', 'WrapWithOp', 'NormalizeWhitespaceOp', 'SetLineTextOp', 'InsertLineBeforeOp',
+           'InsertLineAfterOp', 'DeleteLineOp', 'EditPlan', 'setup_ollama_client', 'setup_openai_client',
+           'get_ollama_status', 'get_current_model', 'get_available_models', 'download_ollama_model',
+           'apply_instruction']
 
 # %% ../nbs/01_ai.ipynb 5
 Scope = Literal["global", "line", "line_range", "between_markers"]
@@ -697,8 +643,50 @@ def _apply_plan(transcript: str, plan: EditPlan) -> str:
     return updated
 
 # %% ../nbs/01_ai.ipynb 9
+def setup_ollama_client(model_name: str = "llama3.2") -> bool:
+    """Setup OpenAI client to use Ollama with specified model."""
+    global _client, _current_model
+
+    if not _ollama_manager.is_running():
+        return False
+    
+    try:
+        _client = OpenAI(
+            base_url='http://localhost:11434/v1/',
+            api_key='ollama'  # Ollama doesn't need a real API key
+        )
+        _current_model = model_name
+        return True
+    except Exception:
+        return False
+
+def setup_openai_client(api_key: str, model_name: str = "gpt-4o-mini") -> bool:
+    """Setup OpenAI client to use OpenAI API."""
+    global _client, _current_model
+    
+    try:
+        _client = OpenAI(api_key=api_key)
+        _current_model = model_name
+        return True
+    except Exception:
+        return False
+
+def get_ollama_status() -> Dict[str, Any]:
+    """Get comprehensive Ollama status information."""
+    return {
+        "installed": _ollama_manager.is_installed(),
+        "running": _ollama_manager.is_running(),
+        "install_instructions": _ollama_manager.get_install_instructions(),
+        "models": _ollama_manager.list_models(),
+        "popular_models": _ollama_manager.get_popular_models()
+    }
+
 def get_current_model() -> str:
-    """Get the currently selected model name."""
+    """Get the currently selected model name.
+    
+    Note: This reflects the model used by the internal client.
+    Your application may want to track model state separately.
+    """
     return _current_model
 
 def get_available_models() -> Dict[str, List[str]]:
@@ -727,3 +715,21 @@ def apply_instruction(transcript: str, instruction: str) -> str:
     plan = _plan_edits(transcript, instruction)
     transcript = _apply_plan(transcript, plan)
     return transcript, plan
+
+# %% ../nbs/01_ai.ipynb 11
+def _auto_setup():
+    """Try to automatically setup a client on import."""
+    global _client, _current_model
+
+    # Try OpenAI first
+    load_dotenv()
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key and setup_openai_client(api_key):
+        return
+    
+    # Fall back to Ollama
+    if _ollama_manager.is_running():
+        setup_ollama_client()
+
+# Automatically attempt setup when module is imported
+_auto_setup()

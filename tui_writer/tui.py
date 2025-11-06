@@ -243,7 +243,13 @@ class AISettingsModal(ModalScreen):
         self.available_models = get_available_models()
         self.current_model = get_current_model()
         self.provider = "ollama" if self.current_model in self.available_models["ollama"] else "openai"
+        self.model_options = [(model, model) for model in self.available_models[self.provider]]
         super().__init__()
+
+    PROVIDER_OPTIONS = [
+        ("OpenAI API", "openai"),
+        ("Ollama", "ollama"),
+    ]
 
     def compose(self) -> ComposeResult:
         with Container(id="ai-settings-modal"):
@@ -259,11 +265,8 @@ class AISettingsModal(ModalScreen):
                 
                 # Provider selection
                 yield Static("AI Provider:", classes="select-text")
-                provider_options = [("OpenAI API", "openai")]
-                if self.ollama_status["running"]:
-                    provider_options.insert(0, ("Ollama (Local)", "ollama"))
                 yield Select(
-                    options=provider_options,
+                    options=self.PROVIDER_OPTIONS,
                     allow_blank=False,
                     value=self.provider,
                     id="ai-provider"
@@ -271,16 +274,10 @@ class AISettingsModal(ModalScreen):
                 
                 # Model selection
                 yield Static("Model:", classes="select-text")
-                model_options = []
-                if self.provider == "ollama" and self.available_models["ollama"]:
-                    model_options = [(model, model) for model in self.available_models["ollama"]]
-                elif self.provider == "openai":
-                    model_options = [(model, model) for model in self.available_models["openai"]]
-                
                 yield Select(
-                    options=model_options,
+                    options=self.model_options,
                     allow_blank=False,
-                    value=self.current_model if model_options else None,
+                    value=self.current_model,
                     id="ai-model"
                 )
                 
@@ -318,30 +315,37 @@ class AISettingsModal(ModalScreen):
                     id="ai-settings-actions"
                 )
 
+
+    def on_mount(self) -> None:
+        self.model_select = self.query_one("#ai-model", Select)
+        self.api_key_input = self.query_one("#api-key-input", Input)
+        self.api_key_text = self.query_one("#api-key-text", Static)
+
+        if self.provider == "ollama":
+            self.api_key_input.display = False
+            self.api_key_text.display = False
+
     @on(Select.Changed, "#ai-provider")
     def on_provider_changed(self, event: Select.Changed) -> None:
+        if self.provider == str(event.value):
+            return
+
         self.provider = str(event.value)
-        # Update model options based on provider
-        model_select = self.query_one("#ai-model", Select)
-        api_key_input = self.query_one("#api-key-input", Input)
-        api_key_text = self.query_one("#api-key-text", Static)
-        
+        self.model_options = [(model, model) for model in self.available_models[self.provider]]
+
         if self.provider == "ollama":
-            model_options = [(model, model) for model in self.available_models["ollama"]]
-            api_key_input.display = False
-            api_key_text.display = False
-            # api_key_input.value = ""
+            self.model_select.set_options(self.model_options)
+            self.api_key_input.display = False
+            self.api_key_text.display = False
         else:  # openai
-            model_options = [(model, model) for model in self.available_models["openai"]]
-            api_key_input.display = True
-            api_key_text.display = True
-        
-        model_select.set_options(model_options)
-        if model_options:
-            model_select.value = model_options[1][1]
+            self.model_select.set_options(self.model_options)
+            self.api_key_input.display = True
+            self.api_key_text.display = True
 
     @on(Select.Changed, "#ai-model")
     def on_model_changed(self, event: Select.Changed) -> None:
+        if self.current_model == str(event.value):
+            return
         self.current_model = str(event.value)
 
     @on(Button.Pressed, "#download-model-btn")
