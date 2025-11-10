@@ -3,13 +3,10 @@
 # %% auto 0
 __all__ = ['TranscriptEditor']
 
-# %% ../nbs/01_ai.ipynb 1
-from dotenv import load_dotenv
+# %% ../nbs/01_ai.ipynb 2
 from lisette import *
 
-load_dotenv()
-
-# %% ../nbs/01_ai.ipynb 2
+# %% ../nbs/01_ai.ipynb 4
 class TranscriptEditor:
     """Manages live transcription with AI-assisted editing capabilities."""
     
@@ -43,6 +40,7 @@ Format your responses as:
         
         # Determine if it's an append or edit
         if result.startswith("APPEND"):
+            self.full_transcript += result
             action = "append"
         else:
             # It's an edit - replace full transcript
