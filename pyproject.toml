@@ -17,7 +17,7 @@ dependencies = [
     "pyperclip",
     "pyaudio",
     "numpy",
-    "lisette"
+    "lisette",
     "typer>=0.19.2",
     "smolagents[openai]",
     "fastrtc>=0.0.33",
