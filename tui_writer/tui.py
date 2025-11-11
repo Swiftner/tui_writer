@@ -681,13 +681,17 @@ class TranscriptionTUI(App):
             self.ai_provider = self.cfg["last_provider"]
             self.ai_model = self.cfg["last_model"]
 
-
-        if not self.cfg[f"{self.ai_provider}_key"]:
-            self.notify("No API key reckognized, press 'a' to set up.", severity="error")
+        # Check if provider is configured
+        if not self.ai_provider:
+            self.notify("No AI provider configured, press 'a' to set up.", severity="error")
+            self.title = "○ STANDBY (No Provider Configured)"
+        elif not self.cfg[f"{self.ai_provider}_key"]:
+            self.notify("No API key recognized, press 'a' to set up.", severity="error")
+            self.title = f"○ STANDBY ({self.ai_provider}/{self.ai_model})"
         else:
-            self.notify(f"Using: {self.ai_provider} & {self.ai_model}. Loaded API Key sucessfully")
+            self.notify(f"Using: {self.ai_provider} & {self.ai_model}. Loaded API Key successfully")
+            self.title = f"○ STANDBY ({self.ai_provider}/{self.ai_model})"
 
-        self.title = f"○ STANDBY ({self.ai_provider}/{self.ai_model})"
         self.header = self.query_one(Header)
         self.transcript_display: Log = self.query_one("#transcript-display", Log)
         self.theme = "textual-dark"
