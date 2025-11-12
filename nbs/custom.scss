@@ -1,0 +1,37 @@
+/*-- scss:defaults --*/
+$sidebar-hl: #8447FF !default;
+$link-color: #8447FF !default;
+$navbar-bg: #8447FF !default;
+$footer-bg: #8447FF !default;
+$body-bg:  #13194A !default;
+$body-color: #FFFFE8 !default;
+$sidebar-fg: #FFFFE8 !default;
+
+/*-- scss:rules --*/
+.navbar {
+    height: auto !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+}
+
+.navbar img.navbar-logo {
+    height: 40px !important;
+    max-height: none !important;
+    max-width: none !important;
+}
+
+.footer .bi {
+  font-size: 25px !important;
+}
+
+.nav-footer-left img {
+  height: 25px !important;
+}
+
+code span.ex {
+    color: #8447FF !important;
+}
+
+code span.at {
+    color: #8447FF !important;
+}

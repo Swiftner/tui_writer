@@ -1,22 +1,42 @@
 project:
   type: website
+  output-dir: docs
 
 format:
   html:
-    theme: cosmo
+    theme:
+      - darkly
+      - custom.scss
     css: styles.css
     toc: true
     keep-md: true
+    linkcolor: "#8447FF"
+    monofont: "#8447FF"
+
   commonmark: default
 
 website:
+  title: "TUI Writer"
+  favicon: "static/favicon.ico"
   twitter-card: true
   open-graph: true
   repo-actions: [issue]
   navbar:
     background: primary
     search: true
+    logo: "static/logo.svg"
   sidebar:
     style: floating
+
+  page-footer:
+    left: |
+      <img src="static/logo.svg" alt="TUI Writer Logo" style="height: 30px;">
+    right: 
+      - icon: github
+        href: https://github.com/Swiftner
+      - icon: linkedin
+        href: https://www.linkedin.com/company/swiftner/
+      - icon: link-45deg
+        href: https://swiftner.com/
 
 metadata-files: [nbdev.yml, sidebar.yml]
