@@ -1,0 +1,12 @@
+website:
+  sidebar:
+    contents:
+      - index.ipynb
+      - getting_started.ipynb
+      - section: Core Modules
+        contents:
+        - 00_cli.ipynb
+        - 01_ai.ipynb
+        - 01_config.ipynb
+        - 03_live.ipynb
+        - 05_tui.ipynb
