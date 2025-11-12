@@ -44,10 +44,18 @@ def load_silero_vad():
 
 # %% ../nbs/03_live.ipynb 7
 class LiveTranscriber:
-    """Live audio transcription for TUI applications using PyAudio and Whisper with Silero VAD-based chunking."""
-    
+    """
+    Improved LiveTranscriber:
+      - uses asyncio.Queue for clean async consumption
+      - pushes audio from audio thread with loop.call_soon_threadsafe
+      - collects chunks in a list (no repeated np.append)
+      - does NOT append silence chunks into the sent buffer
+      - dispatches transcription to a thread and safely calls callbacks
+      - provides stop() for clean shutdown
+    """
+
     def __init__(
-        self, 
+        self,
         model_id: str = "openai/whisper-base",
         language: str = "en",
         force_cpu: bool = False,
@@ -56,47 +64,55 @@ class LiveTranscriber:
         min_speech_duration_ms: int = 250,
         min_silence_duration_ms: int = 500,
     ):
-        
         self.logger = logging.getLogger(__name__)
         self.on_transcript = on_transcript
-        
+
         self.model_id = model_id
         self.language = language
 
-        # Fixed 16 kHz sample rate (required by Silero + Whisper)
         self.sample_rate = 16000
-        
-        # Device + ASR model
+
+        # ASR model
         self.device = get_device(force_cpu=force_cpu)
         self.transcribe_model = WhisperModel(
             self.model_id,
             device=self.device,
-            compute_type="int8" if self.device == "cpu" else "float16", # use "float32" on MPS if needed
+            compute_type="int8" if self.device == "cpu" else "float16",
         )
 
-
-        # Load Silero VAD
+        # VAD
         self.vad_threshold = vad_threshold
         self.silero_model = load_silero_vad()
         if self.silero_model is None:
             raise RuntimeError("Silero VAD failed to load. Cannot continue.")
 
-        # Thresholds (in samples)
+        # thresholds in samples
         self.min_speech_samples = int(self.sample_rate * min_speech_duration_ms / 1000)
         self.min_silence_samples = int(self.sample_rate * min_silence_duration_ms / 1000)
 
-        # Buffers and state
-        self.audio_queue: "Queue[np.ndarray]" = Queue()
+        # async queue and runtime vars (set in start())
+        self.async_queue: Optional[asyncio.Queue] = None
+        self.loop: Optional[asyncio.AbstractEventLoop] = None
+
+        # state used by process_audio
         self.is_running = False
-
         self.is_speech_active = False
-        self.speech_buffer = np.array([], dtype=np.float32)
-        self.silence_counter = 0
+        self.speech_chunks: list[np.ndarray] = []  # collect speech chunks here (no np.append)
+        self.speech_samples = 0  # total samples currently in speech_chunks
+        self.silence_counter = 0  # in samples
 
-        self.logger.info(f"Initialized LiveTranscriber (model={model_id}, device={self.device}, sample_rate=16kHz, VAD=Silero)")
-    
+        self._pyaudio = None
+        self._stream = None
+
+        self.logger.info(
+            f"LiveTranscriber init (model={model_id}, device={self.device}, rate={self.sample_rate})"
+        )
+
+    # -------------------------
+    # VAD & transcription helpers
+    # -------------------------
     def _detect_speech_silero(self, audio_chunk: np.ndarray) -> bool:
-        """Return True if speech detected; False on low prob or on error."""
+        """Return True if Silero considers this chunk speech."""
         try:
             audio_tensor = torch.from_numpy(audio_chunk).float()
             prob = self.silero_model(audio_tensor, self.sample_rate).item()
@@ -104,86 +120,188 @@ class LiveTranscriber:
         except Exception as e:
             self.logger.warning(f"Silero VAD error: {e}")
             return False
-    
+
     def _transcribe_chunk(self, audio_data: np.ndarray) -> str:
+        """Blocking transcription call. Run in thread via asyncio.to_thread."""
         segments, _info = self.transcribe_model.transcribe(
             audio_data,
             language=self.language,
             beam_size=1,
             condition_on_previous_text=False,
-            vad_filter=True, # we already did VAD; set True if you want extra internal filtering
-            vad_parameters=dict(
-                threshold=0.4,
-                min_speech_duration_ms=self.min_speech_samples * 1000 // self.sample_rate,
-                max_speech_duration_s=float("inf"),
-                min_silence_duration_ms=200,
-            ),
+            vad_filter=False,
         )
         return " ".join(s.text.strip() for s in segments).strip()
-    
+
+    async def _run_transcribe_and_callback(self, buffer_copy: np.ndarray) -> None:
+        """Run transcription in a worker thread and call user callback safely."""
+        try:
+            text = await asyncio.to_thread(self._transcribe_chunk, buffer_copy)
+        except Exception as e:
+            self.logger.exception(f"Transcription failed: {e}")
+            return
+
+        if not text:
+            return
+
+        if not self.on_transcript:
+            return
+
+        try:
+            if asyncio.iscoroutinefunction(self.on_transcript):
+                await self.on_transcript(text)
+            else:
+                await asyncio.to_thread(self.on_transcript, text)
+        except Exception as e:
+            self.logger.exception(f"on_transcript callback failed: {e}")
+
+    # -------------------------
+    # PyAudio callback -> async queue
+    # -------------------------
     def audio_callback(self, in_data, frame_count, time_info, status):
-        """Called automatically by PyAudio for each audio frame."""
+        """Runs in PyAudio native thread. Put chunk into asyncio.Queue via loop.call_soon_threadsafe."""
         if status:
             self.logger.debug(f"Audio callback status: {status}")
         audio = np.frombuffer(in_data, dtype=np.int16).astype(np.float32) / 32768.0
-        self.audio_queue.put(audio)
+
+        # the audio stream starts only after start() sets self.loop and self.async_queue
+        if self.loop and self.async_queue:
+            # safe: put_nowait from the audio thread via call_soon_threadsafe
+            self.loop.call_soon_threadsafe(self.async_queue.put_nowait, audio)
+        else:
+            # fallback: drop audio if not ready
+            self.logger.debug("Dropping audio: loop or async_queue not ready")
+
         return in_data, pyaudio.paContinue
-    
+
+    # -------------------------
+    # Main async processing loop
+    # -------------------------
     async def process_audio(self):
-        """Process queued audio in real-time with VAD chunking."""
+        """Consume audio chunks from self.async_queue and run VAD/chunking with minimal nesting."""
+        assert self.async_queue is not None
+
         while self.is_running:
-            if self.audio_queue.empty():
-                await asyncio.sleep(0.01)
+            # await next chunk (clean, no busy-sleep)
+            try:
+                chunk: np.ndarray = await self.async_queue.get()
+            except asyncio.CancelledError:
+                break
+
+            is_speech = self._detect_speech_silero(chunk)
+
+            if is_speech:
+                # start or extend a speech buffer (we only append speech chunks)
+                if not self.is_speech_active:
+                    # You just STARTED talking
+                    self.is_speech_active = True
+                    self.speech_chunks = [chunk.copy()]     # Start new buffer
+                    self.speech_samples = len(chunk)        # Count samples
+                    self.silence_counter = 0                # Reset silence timer
+                else:
+                    # You're STILL talking
+                    self.speech_chunks.append(chunk)        # Add to buffer
+                    self.speech_samples += len(chunk)       # Count more samples
+                    self.silence_counter = 0                # Reset silence timer
+                continue    # Skip to next chunk
+
+            # chunk is silence
+            if not self.is_speech_active:
+                # You're still quiet, nothing to do
+                continue    # Skip to next chunk
+
+            # we were in speech; got a silence chunk -> count it
+            self.silence_counter += len(chunk)
+
+            if self.silence_counter < self.min_silence_samples:
+                # not enough silence yet to finalize
                 continue
 
-            chunk = self.audio_queue.get()
-            if self._detect_speech_silero(chunk):
-                if not self.is_speech_active:
-                    self.is_speech_active = True
-                    self.speech_buffer = chunk.copy()
-                    self.silence_counter = 0
+            # enough silence observed -> finalize this speech segment
+            if self.speech_samples >= self.min_speech_samples:
+
+                # 1. Combine all speech chunks into one audio buffer
+                if len(self.speech_chunks) > 1:
+                    buffer_copy = np.concatenate(self.speech_chunks)  # Multiple chunks
                 else:
-                    self.speech_buffer = np.append(self.speech_buffer, chunk)
-                    self.silence_counter = 0
+                    buffer_copy = self.speech_chunks[0].copy()        # Single chunk
+                
+                # 2. IMMEDIATELY reset state (so we can capture new speech)
+                self.is_speech_active = False
+                self.speech_chunks = []
+                self.speech_samples = 0
+                self.silence_counter = 0
+
+                # 3. Send to Whisper (in background, don't wait for it)
+                asyncio.create_task(self._run_transcribe_and_callback(buffer_copy))
             else:
-                if self.is_speech_active:
-                    self.silence_counter += len(chunk)
-                    self.speech_buffer = np.append(self.speech_buffer, chunk)
+                # Speech was too short (< 250ms), just ignore it
+                self.is_speech_active = False
+                self.speech_chunks = []
+                self.speech_samples = 0
+                self.silence_counter = 0
 
-                    if self.silence_counter >= self.min_silence_samples:
-                        if len(self.speech_buffer) >= self.min_speech_samples:
-                            text = await asyncio.to_thread(self._transcribe_chunk, self.speech_buffer)
-                            if text and self.on_transcript:
-                                if asyncio.iscoroutinefunction(self.on_transcript):
-                                    await self.on_transcript(text)
-                                else:
-                                    self.on_transcript(text)
-                        # reset
-                        self.is_speech_active = False
-                        self.speech_buffer = np.array([], dtype=np.float32)
-                        self.silence_counter = 0
-    
+    # -------------------------
+    # Start / stop helpers
+    # -------------------------
     async def start(self):
-        """Start recording and transcription loop."""
-        self.is_running = True
-        audio = pyaudio.PyAudio()
-        try:
-            stream = audio.open(
-                format=pyaudio.paInt16,
-                channels=1,
-                rate=self.sample_rate,
-                input=True,
-                frames_per_buffer=512,
-                stream_callback=self.audio_callback,
-            )
-            stream.start_stream()
-            try:
-                await self.process_audio()
-            finally:
-                stream.stop_stream()
-                stream.close()
-        finally:
-            audio.terminate()
+        """Start audio stream and processing loop. Returns when process_audio finishes (stop() called)."""
+        if self.is_running:
+            return
 
-    def stop(self):
+        self.loop = asyncio.get_running_loop()
+        self.async_queue = asyncio.Queue()
+        self.is_running = True
+
+        # start pyaudio stream
+        self._pyaudio = pyaudio.PyAudio()
+        self._stream = self._pyaudio.open(
+            format=pyaudio.paInt16,
+            channels=1,
+            rate=self.sample_rate,
+            input=True,
+            frames_per_buffer=512,
+            stream_callback=self.audio_callback,
+        )
+        self._stream.start_stream()
+
+        try:
+            await self.process_audio()
+        finally:
+            # cleanup
+            try:
+                self._stream.stop_stream()
+                self._stream.close()
+            except Exception:
+                pass
+            try:
+                self._pyaudio.terminate()
+            except Exception:
+                pass
+            self.is_running = False
+            self.loop = None
+            self.async_queue = None
+
+    async def stop(self, transcribe_remaining: bool = True):
+        """Signal the processing loop to stop and optionally transcribe remaining speech."""
         self.is_running = False
+        
+        # If we have buffered speech and want to transcribe it
+        if transcribe_remaining and self.is_speech_active and len(self.speech_chunks) > 0:
+            # Combine speech chunks
+            if len(self.speech_chunks) > 1:
+                buffer_copy = np.concatenate(self.speech_chunks)
+            else:
+                buffer_copy = self.speech_chunks[0].copy()
+            
+            # Clear state
+            self.is_speech_active = False
+            self.speech_chunks = []
+            self.speech_samples = 0
+            self.silence_counter = 0
+            
+            # Transcribe immediately (wait for completion)
+            await self._run_transcribe_and_callback(buffer_copy)
+        
+        # Wait for process_audio to exit
+        await asyncio.sleep(0.05)
+
