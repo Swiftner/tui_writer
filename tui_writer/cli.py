@@ -14,6 +14,7 @@ console = Console()
 
 
 # %% ../nbs/00_cli.ipynb 6
+#| include: false
 app = typer.Typer()
 
 @app.command()

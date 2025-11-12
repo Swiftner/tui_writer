@@ -6,7 +6,7 @@ __all__ = ['TEXTUAL_CSS', 'PROVIDERS', 'HELP_MARKDOWN', 'DEFAULT_VAD_THRESHOLD',
            'model_options_for', 'cfg_key_for', 'mask_key', 'AISettingsModal', 'HelpModal', 'RecordingState',
            'TranscriptionTUI']
 
-# %% ../nbs/05_tui.ipynb 2
+# %% ../nbs/05_tui.ipynb 3
 from enum import Enum, auto
 import asyncio
 import pyperclip
@@ -23,7 +23,7 @@ from .live import LiveTranscriber
 from .ai import TranscriptEditor
 from .config import get_cfg
 
-# %% ../nbs/05_tui.ipynb 4
+# %% ../nbs/05_tui.ipynb 5
 TEXTUAL_CSS = """
     Screen {
         align: center top;
@@ -124,7 +124,8 @@ TEXTUAL_CSS = """
     }
 """
 
-# %% ../nbs/05_tui.ipynb 6
+# %% ../nbs/05_tui.ipynb 7
+#| include: false
 class SettingsModal(ModalScreen):
     # Available Whisper model options (label, value)
     WHISPER_MODELS = [
@@ -232,7 +233,8 @@ class SettingsModal(ModalScreen):
         self.dismiss([self.model, self.language])
 
 
-# %% ../nbs/05_tui.ipynb 8
+# %% ../nbs/05_tui.ipynb 9
+#| include: false
 PROVIDERS = {
     "openai": {
         "label": "OpenAI",
@@ -405,7 +407,8 @@ class AISettingsModal(ModalScreen):
         self.dismiss(None)
 
 
-# %% ../nbs/05_tui.ipynb 10
+# %% ../nbs/05_tui.ipynb 11
+#| include: false
 HELP_MARKDOWN = """\
 # TUI Writer
 
@@ -474,7 +477,8 @@ class HelpModal(ModalScreen):
         self.app.pop_screen()
 
 
-# %% ../nbs/05_tui.ipynb 12
+# %% ../nbs/05_tui.ipynb 13
+#| include: false
 # Constants for transcriber configuration
 DEFAULT_VAD_THRESHOLD = 0.5
 DEFAULT_MIN_SPEECH_DURATION_MS = 250
