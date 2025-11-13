@@ -17,7 +17,7 @@ from textual.app import App, ComposeResult
 from textual.reactive import reactive
 from textual.containers import Container, Grid, Center, HorizontalGroup
 from textual.screen import ModalScreen
-from textual.widgets import Header, Footer, Static, Button, Log, Select, Rule, MarkdownViewer, Input
+from textual.widgets import Header, Footer, Static, Button, Log, Select, Rule, MarkdownViewer, Input, Switch
 
 from .live import LiveTranscriber
 from .ai import TranscriptEditor
@@ -65,7 +65,7 @@ TEXTUAL_CSS = """
         width: 100;
         padding: 0 2;
         align: center top;
-        height: 20;
+        height: 25;
     }
     
     AISettingsModal {
@@ -89,7 +89,7 @@ TEXTUAL_CSS = """
     }
     #settings-grid {
         layout: grid;
-        grid-size: 3 3;
+        grid-size: 3 4;
         grid-rows: 1fr;
         grid-columns: 1fr;
         grid-gutter: 1;
@@ -109,6 +109,10 @@ TEXTUAL_CSS = """
     Select {
         column-span: 2;
         height: 100%;
+        align: center middle;
+    }
+    Switch {
+        column-span: 2;
         align: center middle;
     }
     Input {
@@ -186,9 +190,10 @@ class SettingsModal(ModalScreen):
         ("Lithuanian", "lt"),
     ]
 
-    def __init__(self, model, language):
+    def __init__(self, model, language, transcribe_only):
         self.model = model
         self.language = language
+        self.transcribe_only = transcribe_only
         super().__init__()
 
     def compose(self) -> ComposeResult:
@@ -210,6 +215,8 @@ class SettingsModal(ModalScreen):
                         value=self.language,
                         id="whisper-language"
                 )
+                yield Static("Transcribe only mode:", classes="select-text")
+                yield Switch(value=self.transcribe_only,animate=False, id="transcribe_only")
                 yield Center(
                     Button.success("Close (esc)", id="save"),
                     id="settings-actions",
@@ -225,11 +232,15 @@ class SettingsModal(ModalScreen):
     def on_language_changed(self, event: Select.Changed) -> None:
         self.language = str(event.value)
 
+    @on(Switch.Changed, "#transcribe_only")
+    def on_transcribe_only_changed(self, event: Switch.Changed) -> None:
+        self.transcribe_only = event.value
+
     def key_escape(self) -> None:
-        self.dismiss([self.model, self.language])
+        self.dismiss([self.model, self.language, self.transcribe_only])
 
     def on_button_pressed(self) -> None:
-        self.dismiss([self.model, self.language])
+        self.dismiss([self.model, self.language, self.transcribe_only])
 
 
 # %% ../nbs/05_tui.ipynb 8
@@ -519,6 +530,7 @@ class TranscriptionTUI(App):
         # Configuration
         self.whisper_model = "base"
         self.language = "en"
+        self.transcribe_only = False
         
         # AI provider configuration
         self.ai_provider = ""
@@ -542,7 +554,7 @@ class TranscriptionTUI(App):
         self.push_screen(HelpModal())
 
     def action_settings_modal(self) -> None:
-        self.push_screen(SettingsModal(self.whisper_model, self.language), self.apply_settings)
+        self.push_screen(SettingsModal(self.whisper_model, self.language, self.transcribe_only), self.apply_settings)
 
     def action_ai_settings_modal(self) -> None:
         """Open AI model settings modal."""
@@ -554,13 +566,16 @@ class TranscriptionTUI(App):
     async def action_toggle_recording(self) -> None:
         """Spacebar: start if idle, stop if currently recording."""
         if self.state is RecordingState.IDLE:
-            if not self.ai_model:
-                self.notify("Please setup AI model first. Press 'a' to set up", severity="warning")
-            # Initialize transcript editor if needed
-            if not self.transcript_editor:
-                self.transcript_editor = TranscriptEditor(self._get_full_model_name())
-            
-            await self._start(self.on_transcript_chunk)
+            if self.transcribe_only:
+                await self._start(self.on_transcribe_only)
+            else:
+                if not self.ai_model:
+                    self.notify("Please setup AI model first. Press 'a' to set up", severity="warning")
+                # Initialize transcript editor if needed
+                if not self.transcript_editor:
+                    self.transcript_editor = TranscriptEditor(self._get_full_model_name())
+                await self._start(self.on_transcript_chunk)
+
             self.state = RecordingState.RECORDING
         elif self.state is RecordingState.RECORDING:
             self.title = "STOPPING..."
@@ -577,9 +592,10 @@ class TranscriptionTUI(App):
     # === Settings & Modal Callbacks ===
     def apply_settings(self, settings: list[str]) -> None:
         """Apply Whisper model settings."""
-        model, language = settings
+        model, language, transcribe_only = settings
         self.whisper_model = model
         self.language = language
+        self.transcribe_only = transcribe_only
     
     def apply_ai_settings(self, result) -> None:
         """Apply/update AI provider and model settings."""
@@ -623,6 +639,13 @@ class TranscriptionTUI(App):
     def _normalize_text(self, text: str) -> str:
         """Normalize and clean text input."""
         return (text or "").strip()
+
+    def on_transcribe_only(self, text: str) -> None:
+        text = self._normalize_text(text)
+        if not text:
+            return
+        self.transcript_display.write_line(text)
+
 
     def on_transcript_chunk(self, text: str) -> None:
         """Called whenever the transcriber produces a new text chunk.
