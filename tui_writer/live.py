@@ -102,6 +102,10 @@ class LiveTranscriber:
         self.speech_samples = 0  # total samples currently in speech_chunks
         self.silence_counter = 0  # in samples
 
+        # Pre-buffer to capture start of speech (keeps last 3 chunks before speech detected)
+        self.pre_buffer: list[np.ndarray] = []
+        self.pre_buffer_chunks = 3
+
         self._pyaudio = None
         self._stream = None
 
@@ -193,11 +197,12 @@ class LiveTranscriber:
             if is_speech:
                 # start or extend a speech buffer (we only append speech chunks)
                 if not self.is_speech_active:
-                    # You just STARTED talking
+                    # You just STARTED talking - include pre-buffer to capture beginning
                     self.is_speech_active = True
-                    self.speech_chunks = [chunk.copy()]     # Start new buffer
-                    self.speech_samples = len(chunk)        # Count samples
+                    self.speech_chunks = self.pre_buffer.copy() + [chunk.copy()]    # Pre-buffer + current chunk
+                    self.speech_samples = sum(len(c) for c in self.speech_chunks)   # Count all samples
                     self.silence_counter = 0                # Reset silence timer
+                    self.pre_buffer = []                    # Clear pre-buffer
                 else:
                     # You're STILL talking
                     self.speech_chunks.append(chunk)        # Add to buffer
@@ -207,7 +212,10 @@ class LiveTranscriber:
 
             # chunk is silence
             if not self.is_speech_active:
-                # You're still quiet, nothing to do
+                # You're still quiet - add to pre-buffer (rolling buffer)
+                self.pre_buffer.append(chunk.copy())
+                if len(self.pre_buffer) > self.pre_buffer_chunks:
+                    self.pre_buffer.pop(0)  # Remove oldest chunk
                 continue    # Skip to next chunk
 
             # we were in speech; got a silence chunk -> count it
