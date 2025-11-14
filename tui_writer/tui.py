@@ -583,8 +583,9 @@ class TranscriptionTUI(App):
             self.state = RecordingState.IDLE
 
     def action_copy_transcription(self) -> None:
-        if self.transcript_editor and self.transcript_editor.full_transcript:
-            pyperclip.copy(self.transcript_editor.full_transcript)
+        if self.transcript_display.line_count > 0:
+            text = "\n".join(self.transcript_display.lines)
+            pyperclip.copy(text)
             self.notify("Copied transcription", title="Copied to clipboard!")
         else:
             self.notify("Nothing to copy yet!", severity="warning", title="Oops!")
