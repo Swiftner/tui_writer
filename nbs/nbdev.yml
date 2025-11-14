@@ -1,8 +1,8 @@
 project:
-  output-dir: _docs
+  output-dir: docs
 
 website:
-  title: "tui_writer"
+  title: "TUI Writer"
   site-url: "https://Swiftner.github.io/tui_writer"
   description: "A TUI that you run to transcribe and edit text. It's like a companion that dictates for you, engaging in a dialogue to collaboratively update a block of text rather than performing a direct transcription."
   repo-branch: main

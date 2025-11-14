@@ -3,10 +3,10 @@
 # %% auto 0
 __all__ = ['TranscriptEditor']
 
-# %% ../nbs/01_ai.ipynb 2
+# %% ../nbs/01_ai.ipynb 3
 from lisette import *
 
-# %% ../nbs/01_ai.ipynb 4
+# %% ../nbs/01_ai.ipynb 5
 class TranscriptEditor:
     """Manages live transcription with AI-assisted editing capabilities."""
     

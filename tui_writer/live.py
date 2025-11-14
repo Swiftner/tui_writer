@@ -4,6 +4,7 @@
 __all__ = ['get_device', 'load_silero_vad', 'LiveTranscriber']
 
 # %% ../nbs/03_live.ipynb 4
+#| include: false
 import logging
 import asyncio
 from typing import Optional, Callable
