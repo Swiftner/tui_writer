@@ -1,11 +1,10 @@
 [project]
 name="tui_writer"
 version = "0.1.0"
-description = "Add your description here"
+description = "A TUI that you run to transcribe and edit text. It's like a companion that dictates for you, engaging in a dialogue to collaboratively update a block of text rather than performing a direct transcription."
 readme = "README.md"
 requires-python=">=3.10"
 dependencies = [
-    "nbdev>=2.4.5",
     "textual>=6.1.0",
     "textual-dev>=1.7.0",
     "click",
@@ -25,12 +24,12 @@ dependencies = [
 ]
 
 [project.scripts]
-
 tui_writer = "tui_writer.cli:tui"
 
 [tool.uv]
 package = true
 dev-dependencies = [
+    "nbdev>=2.4.5",
     "jupyterlab",
     "ipykernel"
 ]
