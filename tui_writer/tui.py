@@ -652,7 +652,7 @@ class TranscriptionTUI(App):
         self.transcript_display.write_line(text)
 
 
-    def on_transcript_chunk(self, text: str) -> None:
+    async def on_transcript_chunk(self, text: str) -> None:
         """Called whenever the transcriber produces a new text chunk.
         Passes through AI to detect edits vs new text."""
         text = self._normalize_text(text)
@@ -661,7 +661,7 @@ class TranscriptionTUI(App):
         
         try:
             # Process chunk through AI
-            result = self.transcript_editor.process_chunk(text)
+            result = await self.transcript_editor.process_chunk(text)
             
             # Update display based on action
             if result["action"] == "edit":
@@ -726,4 +726,3 @@ class TranscriptionTUI(App):
 
     async def on_unmount(self) -> None:
         await self._stop()
-

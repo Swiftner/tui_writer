@@ -5,65 +5,100 @@ __all__ = ['TranscriptEditor']
 
 # %% ../nbs/01_ai.ipynb 3
 from lisette import *
+import asyncio
+import re
 
 # %% ../nbs/01_ai.ipynb 5
 class TranscriptEditor:
     """Manages live transcription with AI-assisted editing capabilities."""
     
+    # Keywords that suggest the user wants to edit
+    EDIT_KEYWORDS = {
+        'change', 'replace', 'delete', 'remove', 'fix', 'correct', 
+        'modify', 'edit', 'scratch', 'actually', 'wait',
+        'no', 'instead', 'undo', 'oops', 'mistake', 'wrong'
+    }
+    
     def __init__(self, model: str, temperature: float = 0.1):
-        self.chat = Chat(
-            model,
-            sp="""You are helping with live transcription. As the user speaks, you'll receive each transcribed chunk (Each chunk being a line of text).
-Your job is to:
-1. Detect when the user wants to edit previous text (e.g., "change that to...", "delete the last part", "replace hamburgers with pizza")
-2. When an edit is requested, return ONLY the complete corrected/edited transcript
-3. When it's just new text, return ONLY the word "APPEND"
-4. Keep the conversation history to understand context
-
-Format your responses as:
-- For edits: Return the full corrected transcript, each sentence on its own line
-- For new text: APPEND""",
-            temp=temperature
-        )
+        self.model = model
+        self.temperature = temperature
         self.full_transcript = ""
         self.total_tokens = 0
     
-    def process_chunk(self, chunk: str) -> dict:
-        """Process a transcription chunk and determine if it's new text or an edit."""
+    def _contains_edit_keyword(self, text: str) -> bool:
+        """Check if text contains any edit keywords."""
+        text_lower = text.lower()
+        return any(keyword in text_lower for keyword in self.EDIT_KEYWORDS)
+    
+    async def process_chunk(self, chunk: str) -> dict:
+        """Process a transcription chunk - only calls AI if edit keywords detected."""
         
-        # Send the chunk with context about current transcript
-        response = self.chat(chunk)
-        
-        result = response.choices[0].message.content.strip()
-        tokens = response.usage.total_tokens if hasattr(response, "usage") else 0
-        self.total_tokens += tokens
-        
-        # Determine if it's an append or edit
-        if result.startswith("APPEND"):
-            self.full_transcript += result
-            action = "append"
+        # Check if this looks like an edit command
+        if self._contains_edit_keyword(chunk):
+            # Create a fresh Chat instance for this call (stateless)
+            chat = Chat(
+                self.model,
+                sp="""You are helping with live transcription editing.
+
+You will receive:
+1. The current full transcript
+2. The latest chunk of text the user just said
+
+Determine if the user wants to edit the transcript:
+- If YES: Return ONLY the complete corrected transcript (preserve all newlines)
+- If NO (false alarm, they're just speaking normally): Return ONLY the word "APPEND"
+
+Be decisive and fast. Most of the time it's a real edit if you're being called.""",
+                temp=self.temperature
+            )
+            
+            # Provide full context to AI
+            prompt = f"""Current transcript:
+{self.full_transcript}
+
+Latest speech:
+{chunk}"""
+            
+            # Call AI in thread pool to avoid blocking
+            response = await asyncio.to_thread(chat, prompt)
+            
+            result = response.choices[0].message.content.strip()
+            tokens = response.usage.total_tokens if hasattr(response, "usage") else 0
+            self.total_tokens += tokens
+            
+            # Check if AI confirmed it's an edit
+            if result.startswith("APPEND"):
+                # False alarm - just append with newline
+                self.full_transcript += chunk + "\n"
+                action = "append"
+            else:
+                # Real edit - replace transcript
+                self.full_transcript = result
+                action = "edit"
+            
+            return {
+                "transcript": self.full_transcript,
+                "action": action,
+                "tokens_used": tokens,
+                "total_tokens": self.total_tokens,
+                "ai_called": True
+            }
         else:
-            # It's an edit - replace full transcript
-            self.full_transcript = result
-            action = "edit"
-        
-        return {
-            "transcript": self.full_transcript,
-            "action": action,
-            "tokens_used": tokens,
-            "total_tokens": self.total_tokens
-        }
+            # No edit keywords - just append with newline
+            self.full_transcript += chunk + "\n"
+            return {
+                "transcript": self.full_transcript,
+                "action": "append",
+                "tokens_used": 0,
+                "total_tokens": self.total_tokens,
+                "ai_called": False
+            }
     
     def get_transcript(self) -> str:
         """Get the current full transcript."""
         return self.full_transcript
     
-    def reset(self):
-        """Reset the transcript and chat history."""
+    async def reset(self):
+        """Reset the transcript and token counter."""
         self.full_transcript = ""
         self.total_tokens = 0
-        self.chat = Chat(
-            self.chat.model,
-            sp=self.chat.sp,
-            temp=self.chat.temp
-        )
