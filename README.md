@@ -48,22 +48,16 @@ modules - Runs tests - Updates documentation - Cleans notebook outputs
 
 ### Installation Options
 
-Install TUI Writer from Github:
-
-``` sh
-pip install git+https://github.com/Swiftner/tui_writer.git
-```
-
-Or from conda:
-
-``` sh
-conda install -c Swiftner tui_writer
-```
-
-Or from PyPI:
+Install TUI Writer using pip:
 
 ``` sh
 pip install tui_writer
+```
+
+Or using uv:
+
+``` sh
+uv pip install tui_writer
 ```
 
 ### Prerequisites
