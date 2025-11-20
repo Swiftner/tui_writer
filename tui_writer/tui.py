@@ -65,7 +65,7 @@ TEXTUAL_CSS = """
         width: 100;
         padding: 0 2;
         align: center top;
-        height: 25;
+        height: 30;
     }
     
     AISettingsModal {
@@ -89,7 +89,7 @@ TEXTUAL_CSS = """
     }
     #settings-grid {
         layout: grid;
-        grid-size: 3 4;
+        grid-size: 3 5;
         grid-rows: 1fr;
         grid-columns: 1fr;
         grid-gutter: 1;
@@ -191,10 +191,12 @@ class SettingsModal(ModalScreen):
         ("Lithuanian", "lt"),
     ]
 
-    def __init__(self, model, language, transcribe_only):
+    def __init__(self, model, language):
+        self.cfg = get_cfg()
         self.model = model
         self.language = language
-        self.transcribe_only = transcribe_only
+        self.transcribe_only = self.cfg.get("transcribe_only")
+        self.rec_on_launch = self.cfg.get("rec_on_launch")
         super().__init__()
 
     def compose(self) -> ComposeResult:
@@ -209,6 +211,7 @@ class SettingsModal(ModalScreen):
                         value=self.model,
                         id="whisper-model"
                 )
+
                 yield Static("Language:", classes="select-text")
                 yield Select(
                         options=self.WHISPER_LANGUAGES,
@@ -216,8 +219,13 @@ class SettingsModal(ModalScreen):
                         value=self.language,
                         id="whisper-language"
                 )
+                
                 yield Static("Transcribe only mode:", classes="select-text")
                 yield Switch(value=self.transcribe_only,animate=False, id="transcribe_only")
+
+                yield Static("Start recording on app launch:", classes="select-text")
+                yield Switch(value=self.rec_on_launch, animate=False, id="rec_on_launch")
+
                 yield Center(
                     Button.success("Close (esc)", id="save"),
                     id="settings-actions",
@@ -236,12 +244,20 @@ class SettingsModal(ModalScreen):
     @on(Switch.Changed, "#transcribe_only")
     def on_transcribe_only_changed(self, event: Switch.Changed) -> None:
         self.transcribe_only = event.value
+        self.cfg["transcribe_only"] = self.transcribe_only
+        self.cfg.save()
+    
+    @on(Switch.Changed, "#rec_on_launch")
+    def on_rec_on_launch_changed(self, event: Switch.Changed) -> None:
+        self.rec_on_launch = event.value
+        self.cfg["rec_on_launch"] = self.rec_on_launch
+        self.cfg.save()
 
     def key_escape(self) -> None:
-        self.dismiss([self.model, self.language, self.transcribe_only])
+        self.dismiss([self.model, self.language])
 
     def on_button_pressed(self) -> None:
-        self.dismiss([self.model, self.language, self.transcribe_only])
+        self.dismiss([self.model, self.language])
 
 
 # %% ../nbs/05_tui.ipynb 9
@@ -533,7 +549,7 @@ class TranscriptionTUI(App):
         # Configuration
         self.whisper_model = "base"
         self.language = "en"
-        self.transcribe_only = False
+        
         
         # AI provider configuration
         self.ai_provider = ""
@@ -557,7 +573,7 @@ class TranscriptionTUI(App):
         self.push_screen(HelpModal())
 
     def action_settings_modal(self) -> None:
-        self.push_screen(SettingsModal(self.whisper_model, self.language, self.transcribe_only), self.apply_settings)
+        self.push_screen(SettingsModal(self.whisper_model, self.language), self.apply_settings)
 
     def action_ai_settings_modal(self) -> None:
         """Open AI model settings modal."""
@@ -574,6 +590,7 @@ class TranscriptionTUI(App):
             else:
                 if not self.ai_model:
                     self.notify("Please setup AI model first. Press 'a' to set up", severity="warning")
+                    return
                 # Initialize transcript editor if needed
                 if not self.transcript_editor:
                     self.transcript_editor = TranscriptEditor(self._get_full_model_name())
@@ -596,10 +613,14 @@ class TranscriptionTUI(App):
     # === Settings & Modal Callbacks ===
     def apply_settings(self, settings: list[str]) -> None:
         """Apply Whisper model settings."""
-        model, language, transcribe_only = settings
+        model, language = settings
         self.whisper_model = model
         self.language = language
-        self.transcribe_only = transcribe_only
+        
+        self.cfg = get_cfg()
+        self.transcribe_only = self.cfg["transcribe_only"]
+        self.rec_on_launch = self.cfg["rec_on_launch"]
+        self.notify("Saved changes!", title="Settings")
     
     def apply_ai_settings(self, result) -> None:
         """Apply/update AI provider and model settings."""
@@ -703,25 +724,31 @@ class TranscriptionTUI(App):
     def on_mount(self) -> None:
         """Initialize widget references and set titles."""
         self.cfg = get_cfg()
+        self.transcribe_only = self.cfg["transcribe_only"]
+        self.rec_on_launch = self.cfg["rec_on_launch"]
         self.load_all_api_keys()
+
         if self.cfg["last_provider"] and self.cfg["last_model"]:
             self.ai_provider = self.cfg["last_provider"]
             self.ai_model = self.cfg["last_model"]
 
         # Check if provider is configured
-        if not self.ai_provider:
-            self.notify("No AI provider configured, press 'a' to set up.", severity="error")
-            self.title = "○ STANDBY (No Provider Configured)"
-        elif not self.cfg[f"{self.ai_provider}_key"]:
-            self.notify("No API key recognized, press 'a' to set up.", severity="error")
-            self.title = f"○ STANDBY ({self.ai_provider}/{self.ai_model})"
-        else:
-            self.notify(f"Using: {self.ai_provider} & {self.ai_model}. Loaded API Key successfully")
-            self.title = f"○ STANDBY ({self.ai_provider}/{self.ai_model})"
+        if self.ai_provider:
+            if not self.cfg[f"{self.ai_provider}_key"]:
+                self.notify("No API key recognized, press 'a' to set up.", severity="error")
+                self.title = f"○ STANDBY ({self.ai_provider}/{self.ai_model})"
+            else:
+                self.notify(f"Using: {self.ai_provider} & {self.ai_model}. Loaded API Key successfully")
+                self.title = f"○ STANDBY ({self.ai_provider}/{self.ai_model})"
 
         self.header = self.query_one(Header)
         self.transcript_display: Log = self.query_one("#transcript-display", Log)
         self.theme = "textual-dark"
+
+        # Start recording AFTER everything is set up
+        if self.cfg["rec_on_launch"]:
+            self.call_after_refresh(self.action_toggle_recording)
+
 
     async def on_unmount(self) -> None:
         await self._stop()
