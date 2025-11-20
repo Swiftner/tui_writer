@@ -28,6 +28,8 @@ class TuiWriterConfig:
     gemini_key: str = ''
     last_provider: str = ''
     last_model: str = ''
+    transcribe_only: bool = False
+    rec_on_launch: bool = True
 
 # %% ../nbs/01_config.ipynb 10
 #| include: false
