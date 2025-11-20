@@ -262,9 +262,9 @@ PROVIDERS = {
         "label": "Anthropic",
         "cfg_key": "anthropic_key",
         "models": [
-            ("Claude 3.5 Sonnet", "claude-3-5-sonnet-20241022"),
-            ("Claude 3 Opus", "claude-3-opus-20240229"),
-            ("Claude 3 Sonnet", "claude-3-sonnet-20240229"),
+            ("Claude 4.5 Sonnet", "claude-sonnet-4-5-20250929"),
+            ("Claude 4.1 Opus", "claude-opus-4-1-20250805"),
+            ("Claude 3.7 Sonnet", "claude-3-7-sonnet-20250219"),
             ("Claude 3 Haiku", "claude-3-haiku-20240307"),
         ],
     },
