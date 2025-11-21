@@ -93,11 +93,11 @@ transcript to clipboard <br> - **Press Q** to quit <br>
 For detailed documentation on all features, press `?` in the application
 to view the help screen.
 
-## Using Omarchy Keybindings (Optional)
+## Using Omarchy Keybindings
 
 Some users may want to use Omarchy to play back previously recorded terminal sessions using tools such as `script` or `asciinema`.
 
-These tools record the text output of your terminal session (commands and results). They are useful for quick debugging, demos, and sharing reproducible steps.
+These tools record the text output of your terminal session. Useful for quick debugging, demos, and sharing reproducible steps.
 
 ### Example: Record and replay a terminal session
 
