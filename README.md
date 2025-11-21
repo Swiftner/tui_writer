@@ -92,3 +92,46 @@ transcript to clipboard <br> - **Press Q** to quit <br>
 
 For detailed documentation on all features, press `?` in the application
 to view the help screen.
+
+## Using Omarchy Keybindings (Optional)
+
+Some users may want to use Omarchy to play back previously recorded terminal sessions using tools such as `script` or `asciinema`.
+
+These tools record the text output of your terminal session (commands and results). They are useful for quick debugging, demos, and sharing reproducible steps.
+
+### Example: Record and replay a terminal session
+
+**Record using `script`:**
+``` sh
+script session.log
+# ...run any terminal commands you want recorded...
+exit
+```
+
+**Replay using `scriptreplay`:**
+``` sh
+scriptreplay session.log
+```
+
+### Binding playback to a key in Omarchy
+
+Add a keybinding in your Omarchy config:
+``` toml
+[keybindings]
+p = "scriptreplay ~/session.log"
+```
+Press **P** to replay the session.
+
+**Example using `asciinema`**
+
+Record:
+``` sh
+asciinema rec demo.cast
+```
+
+Play back:
+``` sh
+asciinema play demo.cast
+```
+
+These examples can be adapted to your workflow if you use Omarchy alongside TUI Writer.
