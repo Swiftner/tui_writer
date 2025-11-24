@@ -57,7 +57,7 @@ pip install tui_writer
 Or using uv:
 
 ``` sh
-uv pip install tui_writer
+uv tool install tui_writer
 ```
 
 ### Prerequisites
