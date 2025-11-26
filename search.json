@@ -1,0 +1,345 @@
+[
+  {
+    "objectID": "tui.html",
+    "href": "tui.html",
+    "title": "TUI",
+    "section": "",
+    "text": "This module implements the complete Textual-based terminal user interface for live audio transcription with AI-powered editing capabilities.\n\n\nThe TUI provides a full-featured interactive interface that combines:  - Real-time speech transcription with Faster Whisper  - AI-powered edit detection and application  - Multi-provider AI support (OpenAI, Anthropic, Google)  - Keyboard-driven workflow with modal dialogs  - Visual feedback for recording state and AI operations \n\n\n\nThe interface is built with Textual, a modern Python framework for building terminal UIs. The architecture consists of:\n\nMain Application (TranscriptionTUI): Coordinates all components and manages state \nModal Screens: Settings dialogs for audio and AI configuration \nHelp System: Comprehensive in-app documentation \nEvent Handlers: Keyboard shortcuts and user interactions \nReactive UI: Automatic updates based on state changes \n\n\n\n\n\nLive Transcription Display: Scrolling log that shows transcripts in real-time \nRecording Indicator: Header turns red during active recording \nStatus Notifications: Toast-style messages for user feedback \nClipboard Integration: One-key copy of entire transcript \nPersistent Configuration: Remembers settings and API keys between sessions",
+    "crumbs": [
+      "Core Modules",
+      "TUI"
+    ]
+  },
+  {
+    "objectID": "tui.html#tui-module---terminal-user-interface",
+    "href": "tui.html#tui-module---terminal-user-interface",
+    "title": "TUI",
+    "section": "",
+    "text": "This module implements the complete Textual-based terminal user interface for live audio transcription with AI-powered editing capabilities.\n\n\nThe TUI provides a full-featured interactive interface that combines:  - Real-time speech transcription with Faster Whisper  - AI-powered edit detection and application  - Multi-provider AI support (OpenAI, Anthropic, Google)  - Keyboard-driven workflow with modal dialogs  - Visual feedback for recording state and AI operations \n\n\n\nThe interface is built with Textual, a modern Python framework for building terminal UIs. The architecture consists of:\n\nMain Application (TranscriptionTUI): Coordinates all components and manages state \nModal Screens: Settings dialogs for audio and AI configuration \nHelp System: Comprehensive in-app documentation \nEvent Handlers: Keyboard shortcuts and user interactions \nReactive UI: Automatic updates based on state changes \n\n\n\n\n\nLive Transcription Display: Scrolling log that shows transcripts in real-time \nRecording Indicator: Header turns red during active recording \nStatus Notifications: Toast-style messages for user feedback \nClipboard Integration: One-key copy of entire transcript \nPersistent Configuration: Remembers settings and API keys between sessions",
+    "crumbs": [
+      "Core Modules",
+      "TUI"
+    ]
+  },
+  {
+    "objectID": "tui.html#styling-with-textual-css",
+    "href": "tui.html#styling-with-textual-css",
+    "title": "TUI",
+    "section": "Styling with Textual CSS",
+    "text": "Styling with Textual CSS\nThe CSS defines the visual appearance of the TUI using Textual’s CSS-like syntax. Key features:  - Recording indicator: Changes header background to red ($error) when recording  - Transcript display: Styled with hatching pattern and padding for readability  - Modal layouts: Centered dialogs for settings and help screens  - Uses Textual’s built-in color variables like $background, $surface, $boost, etc.",
+    "crumbs": [
+      "Core Modules",
+      "TUI"
+    ]
+  },
+  {
+    "objectID": "tui.html#settingsmodal---audio-configuration",
+    "href": "tui.html#settingsmodal---audio-configuration",
+    "title": "TUI",
+    "section": "SettingsModal - Audio Configuration",
+    "text": "SettingsModal - Audio Configuration\nModal dialog for configuring Whisper transcription settings. Accessed by pressing s in the main interface.\n\nAvailable Models\nThe modal offers 10 Whisper model options with trade-offs between speed and accuracy:\nStandard Models (multilingual):  - Tiny: Ultra fast, low accuracy - Good for testing or real-time needs  - Base: Fast, decent accuracy - Recommended starting point  - Small: Balanced speed and accuracy - Good general purpose choice  - Medium: Slow, high accuracy - For when quality matters  - Large-v3: Very slow, best accuracy - Maximum quality \nEnglish-Only Models (faster variants):  - Tiny.en through Large.en: Optimized for English, typically 2x faster than multilingual equivalents \n\n\nLanguage Support\nSupports 40+ languages including:  - European: English, German, French, Spanish, Italian, Portuguese, Dutch, Polish, Czech, Slovak, etc.  - Nordic: Norwegian, Swedish, Danish, Finnish  - Slavic: Russian, Ukrainian, Serbian, Croatian, Bulgarian, Slovenian  - Asian: Chinese (Mandarin/Cantonese), Japanese, Korean, Hindi, Bengali, Thai, Vietnamese, Indonesian  - Middle Eastern: Arabic, Hebrew, Persian, Turkish, Urdu  - African: Swahili, Afrikaans \n\n\nImplementation\nUses Textual’s Select widgets for dropdown menus. Selected values are returned when the modal is dismissed and applied via the apply_settings() callback in the main app.",
+    "crumbs": [
+      "Core Modules",
+      "TUI"
+    ]
+  },
+  {
+    "objectID": "tui.html#ai-settings-modal",
+    "href": "tui.html#ai-settings-modal",
+    "title": "TUI",
+    "section": "AI Settings Modal",
+    "text": "AI Settings Modal\nAdvanced modal for managing AI models across different providers. Accessed by pressing a in the main interface.\n\nMulti-Provider Architecture\nThe modal provides a unified interface for three LLM providers:\nOpenAI - Most popular, wide range of models:  - GPT-4o: Latest flagship model, fast and capable  - GPT-4o Mini: Smaller, faster, cost-effective variant  - GPT-4 Turbo: Previous generation flagship  - GPT-4: Original GPT-4  - GPT-3.5 Turbo: Fast and economical \nAnthropic - Claude models known for safety and helpfulness:  - Claude 3.5 Sonnet: Latest and most capable  - Claude 3 Opus: Powerful reasoning and analysis  - Claude 3 Sonnet: Balanced performance  - Claude 3 Haiku: Fast and efficient \nGoogle Gemini - Google’s multimodal models:  - Gemini 1.5 Pro: Large context window, powerful  - Gemini 1.5 Flash: Fast inference, economical  - Gemini 1.0 Pro: Previous generation \n\n\nDynamic UI Updates\nWhen you change providers, the modal:  1. Updates the model dropdown with provider-specific options  2. Loads any existing API key for that provider (displayed as masked dots)  3. Updates the placeholder text in the API key field  4. Preserves the last selected model if switching back to a previous provider \n\n\nAPI Key Management\nAPI keys are:  - Stored in XDG-compliant config file at ~/.config/tui_writer/tui_writer.conf  - Displayed as dots for security when present  - Only updated if you type a new value (leaving blank keeps existing key)  - Loaded into environment variables (OPENAI_API_KEY, etc.) when the app starts \n\n\nPersistence\nThe modal remembers:  - Last used provider  - Last selected model for each provider  - API keys for all providers \nThis allows seamless switching between providers without re-entering credentials.",
+    "crumbs": [
+      "Core Modules",
+      "TUI"
+    ]
+  },
+  {
+    "objectID": "tui.html#helpmodal",
+    "href": "tui.html#helpmodal",
+    "title": "TUI",
+    "section": "HelpModal",
+    "text": "HelpModal\nInteractive help screen accessible by pressing ? in the main interface. Displays comprehensive documentation using Textual’s MarkdownViewer component.\n\nContent Structure\nThe help documentation covers:\nUsage Instructions:  - How to start and stop recording  - How the AI automatically detects edit commands  - Example voice commands for editing \nSettings Configuration:  - Audio settings: Model and language selection  - AI settings: Provider and model configuration \nKeyboard Shortcuts:  - Complete reference table of all available shortcuts  - Quick access to common operations \n\n\nFeatures\n\nMarkdown Rendering: Full support for headings, lists, tables, and formatting \nTable of Contents: Automatic navigation sidebar for long documents \nScrollable: Can handle extensive documentation \nKeyboard Dismissal: Press Esc or click Close button to exit \n\n\n\nImplementation\nThe HELP_MARKDOWN constant contains the documentation as a multi-line string. The MarkdownViewer widget handles parsing and rendering with syntax highlighting and proper formatting.\nThis approach allows easy updates to documentation without changing code structure - just edit the markdown content.",
+    "crumbs": [
+      "Core Modules",
+      "TUI"
+    ]
+  },
+  {
+    "objectID": "tui.html#transcription-tui",
+    "href": "tui.html#transcription-tui",
+    "title": "TUI",
+    "section": "Transcription TUI",
+    "text": "Transcription TUI\nThe core application that integrates all components into a cohesive user experience.\n\nState Management\nThe application uses a simple state machine with two states:\n\nIDLE: Not recording, waiting for user input \nRECORDING: Active transcription in progress \n\nThe state attribute is reactive, meaning changes automatically trigger UI updates through the watch_state() method.\n\n\nRecording State Indicators\nVisual feedback when recording: - Header background turns red - Title changes to “● RECORDING” - Footer shows recording-specific shortcuts\nVisual feedback when idle: - Header background normal - Title shows “○ STANDBY (provider/model)” - Footer shows all available shortcuts\n\n\nAI Integration Strategy\nThe application maintains a single TranscriptEditor instance throughout its lifetime. This is important because:\n\nMemory Persistence: The Chat inside TranscriptEditor maintains a hist (history) of all interactions\nCross-Session Context: Even after stopping and restarting recording, the AI remembers previous context\nEfficient Token Usage: Conversation history allows contextual edits without re-sending entire transcript\nBetter Edit Detection: The AI understands references like “that” or “the last part” from earlier in the session\n\n\n\nTranscription Flow\n\nUser presses SPACE → action_toggle_recording() called\nState changes to RECORDING → UI updates via watch_state()\nLiveTranscriber starts → Begins capturing audio and running VAD\nWhisper transcribes utterances → Calls on_transcript_chunk() with each result\nAI processes chunk → transcript_editor.process_chunk() determines action\nDisplay updates:\n\nFor appends: Add new line to Log widget\nFor edits: Clear Log and redisplay full transcript\n\nUser presses SPACE again → State returns to IDLE, transcriber stops\n\n\n\nCallback Pattern\nThe on_transcript_chunk() callback demonstrates graceful error handling:\ntry:\n    result = self.transcript_editor.process_chunk(text)\n    # Update UI based on result\nexcept Exception as e:\n    # Fallback: just append text without AI processing\n    self.transcript_display.write_line(text)\nThis ensures transcription continues even if AI processing fails (network issues, API limits, etc.).\n\n\nConfiguration Loading\nOn mount, the application: 1. Loads configuration from disk 2. Reads API keys for all providers 3. Sets environment variables for LLM clients 4. Checks if configuration is valid 5. Displays appropriate warnings if setup is incomplete\n\n\nKeyboard Bindings\nAll keyboard shortcuts are declared in the BINDINGS class attribute:\n\nq: Quit application\n?: Open help modal\ns: Open audio settings\na: Open AI model settings\n\nspace: Toggle recording on/off\nc: Copy transcript to clipboard\n\nTextual automatically displays these in the footer and handles the key events.",
+    "crumbs": [
+      "Core Modules",
+      "TUI"
+    ]
+  },
+  {
+    "objectID": "cli.html",
+    "href": "cli.html",
+    "title": "CLI",
+    "section": "",
+    "text": "The CLI module provides the entry point for launching TUI Writer. Built with Typer and Rich, it offers a clean command-line interface that immediately launches the full-featured terminal UI.\nFeatures: - Single command to launch the complete TUI experience - Rich console output for status messages - Simple integration with standard shell workflows - Typer-based command structure for potential future command expansion",
+    "crumbs": [
+      "Core Modules",
+      "CLI"
+    ]
+  },
+  {
+    "objectID": "cli.html#usage",
+    "href": "cli.html#usage",
+    "title": "CLI",
+    "section": "Usage",
+    "text": "Usage\nThe CLI is designed to be minimal and straightforward. The primary use case is launching the interactive TUI.\n\nLaunch the TUI (Default)\ntui_writer\nThis is the recommended way to start TUI Writer. It launches the full Textual-based interface with all features available: live transcription, AI editing, settings management, and keyboard shortcuts.\n\n\nAdvanced Usage\nIf you need to explicitly call the TUI command:\npython -m tui_writer.cli tui",
+    "crumbs": [
+      "Core Modules",
+      "CLI"
+    ]
+  },
+  {
+    "objectID": "cli.html#implementation-details",
+    "href": "cli.html#implementation-details",
+    "title": "CLI",
+    "section": "Implementation Details",
+    "text": "Implementation Details\nThe CLI uses Typer to define a single command application. The main tui() function creates an instance of TranscriptionTUI and starts the Textual application event loop.\nThe Console from Rich is available for any future CLI enhancements that might need formatted output, though the current implementation focuses entirely on the TUI experience.",
+    "crumbs": [
+      "Core Modules",
+      "CLI"
+    ]
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Welcome to TUI Writer",
+    "section": "",
+    "text": "TUI Writer is an AI-assisted transcription tool that brings speech-to-text capabilities directly to your terminal. Unlike traditional transcription tools that simply convert audio to text, TUI Writer is designed as a collaborative companion that engages in dialogue with you, helping to refine and improve your text iteratively.\nBuilt with a modern Python stack using Textual for the terminal interface and Faster Whisper for high-quality transcription, TUI Writer offers a streamlined workflow for anyone who wants to write through speech.\n\n\n\nReal-Time Transcription: Live audio recording and transcription with visual feedback\nVoice Activity Detection: Intelligent speech detection using Silero VAD with configurable thresholds\nAI-Powered Editing: Natural language commands to refine and edit transcripts using LLM integration\nMulti-Provider AI Support: Works with OpenAI, Anthropic, and Google models via lisette\nInteractive TUI: Clean, keyboard-driven interface built with Textual\nConfigurable Audio Settings: Adjustable VAD threshold, speech/silence duration settings\nClipboard Integration: Instantly copy transcriptions to your clipboard\nXDG-Compliant Configuration: Secure API key storage and persistent user preferences",
+    "crumbs": [
+      "Welcome to TUI Writer"
+    ]
+  },
+  {
+    "objectID": "index.html#overview",
+    "href": "index.html#overview",
+    "title": "Welcome to TUI Writer",
+    "section": "",
+    "text": "TUI Writer is an AI-assisted transcription tool that brings speech-to-text capabilities directly to your terminal. Unlike traditional transcription tools that simply convert audio to text, TUI Writer is designed as a collaborative companion that engages in dialogue with you, helping to refine and improve your text iteratively.\nBuilt with a modern Python stack using Textual for the terminal interface and Faster Whisper for high-quality transcription, TUI Writer offers a streamlined workflow for anyone who wants to write through speech.\n\n\n\nReal-Time Transcription: Live audio recording and transcription with visual feedback\nVoice Activity Detection: Intelligent speech detection using Silero VAD with configurable thresholds\nAI-Powered Editing: Natural language commands to refine and edit transcripts using LLM integration\nMulti-Provider AI Support: Works with OpenAI, Anthropic, and Google models via lisette\nInteractive TUI: Clean, keyboard-driven interface built with Textual\nConfigurable Audio Settings: Adjustable VAD threshold, speech/silence duration settings\nClipboard Integration: Instantly copy transcriptions to your clipboard\nXDG-Compliant Configuration: Secure API key storage and persistent user preferences",
+    "crumbs": [
+      "Welcome to TUI Writer"
+    ]
+  },
+  {
+    "objectID": "index.html#quick-start",
+    "href": "index.html#quick-start",
+    "title": "Welcome to TUI Writer",
+    "section": "Quick Start",
+    "text": "Quick Start\n\nInstallation\nInstall TUI Writer using pip:\npip install tui_writer\nOr using uv:\nuv pip install tui_writer\nFor detailed installation instructions, see the Getting Started Guide.\n\n\nBasic Usage\nLaunch the TUI interface:\ntui_writer\nOnce the TUI is running, use these keyboard shortcuts:\n\nspacebar - Start/stop recording\na - AI settings (configure provider and model)\ns - Audio settings (VAD threshold, speech/silence duration)\nc - Copy transcription to clipboard\n? - Help screen with all shortcuts\nq - Quit the application",
+    "crumbs": [
+      "Welcome to TUI Writer"
+    ]
+  },
+  {
+    "objectID": "index.html#example-workflow",
+    "href": "index.html#example-workflow",
+    "title": "Welcome to TUI Writer",
+    "section": "Example Workflow",
+    "text": "Example Workflow\nHere’s a typical workflow with TUI Writer:\n\nLaunch the app: Run tui_writer in your terminal\nConfigure AI (first time): Press a to set up your AI provider and API key\nStart recording: Press spacebar to begin transcribing\nSpeak naturally: Talk into your microphone - your words appear in real-time\nAI Editing: Simply speak edit commands like “change that to…” or “replace the last sentence with…” - the AI automatically detects and applies edits\nStop recording: Press spacebar again when you’re done speaking\nCopy & use: Press c to copy the transcription to your clipboard\n\nThe transcription appears in the text area with AI-powered edit detection working automatically in the background.",
+    "crumbs": [
+      "Welcome to TUI Writer"
+    ]
+  },
+  {
+    "objectID": "index.html#architecture",
+    "href": "index.html#architecture",
+    "title": "Welcome to TUI Writer",
+    "section": "Architecture",
+    "text": "Architecture\nTUI Writer is organized into several focused modules:\n\nCore Modules\n\ncli - Command-line interface powered by Typer\ntui - Terminal UI components built with Textual\n\nMain transcription interface with live recording\nAudio settings modal (VAD threshold, speech/silence duration)\nAI settings modal (provider selection, model configuration, API keys)\nHelp screen with keyboard shortcuts\nReal-time status updates and transcript display\n\nlive - Real-time audio transcription with VAD\n\nPyAudio integration for audio capture\nSilero VAD for voice activity detection\nAsync audio processing pipeline\nConfigurable speech/silence detection thresholds\n\nai - LLM integration for intelligent text refinement via lisette\n\nAI-powered transcript editing\nNatural language edit commands\nMulti-provider support (OpenAI, Anthropic, Google)\n\nconfig - Configuration management\n\nXDG-compliant config file storage\nAPI key management\nUser preferences persistence\n\n\n\n\nTechnology Stack\n\nUI Framework: Textual - Modern TUI framework\nTranscription: Faster Whisper - Optimized Whisper implementation\nAudio: PyAudio + numpy for audio capture and processing\nVAD: Silero VAD for voice activity detection\nCLI: Typer for command-line interface\nAI Integration: lisette for LLM-powered text refinement with multi-provider support\nDevelopment: nbdev for literate programming",
+    "crumbs": [
+      "Welcome to TUI Writer"
+    ]
+  },
+  {
+    "objectID": "index.html#documentation",
+    "href": "index.html#documentation",
+    "title": "Welcome to TUI Writer",
+    "section": "Documentation",
+    "text": "Documentation\nExplore detailed documentation for each module:\n\nGetting Started - Installation and setup guide\nCLI - Command-line interface reference\nTUI - Terminal UI components and usage\nLive - Real-time audio transcription with VAD\nAI - LLM integration for text refinement\nConfig - Configuration management",
+    "crumbs": [
+      "Welcome to TUI Writer"
+    ]
+  },
+  {
+    "objectID": "config.html",
+    "href": "config.html",
+    "title": "Configuration",
+    "section": "",
+    "text": "The configuration module handles persistent storage of user preferences and API credentials. It follows the XDG Base Directory Specification for storing configuration files in standard system locations.\n\n\n\nXDG Compliance: Stores configuration in ~/.config/tui_writer/ on Linux/macOS \nMulti-Provider API Keys: Secure storage for OpenAI, Anthropic, and Google Gemini API keys \nSession Persistence: Remembers the last selected provider and model \nType-Safe Configuration: Uses dataclasses with type hints for configuration structure \nAuto-Creation: Automatically creates config directory and file on first run \n\n\n\n\nThe configuration file is stored at:\n{XDG_CONFIG_HOME}/tui_writer/tui_writer.conf\nOn most systems, this resolves to ~/.config/tui_writer/tui_writer.conf.",
+    "crumbs": [
+      "Core Modules",
+      "Configuration"
+    ]
+  },
+  {
+    "objectID": "config.html#configuration-management",
+    "href": "config.html#configuration-management",
+    "title": "Configuration",
+    "section": "",
+    "text": "The configuration module handles persistent storage of user preferences and API credentials. It follows the XDG Base Directory Specification for storing configuration files in standard system locations.\n\n\n\nXDG Compliance: Stores configuration in ~/.config/tui_writer/ on Linux/macOS \nMulti-Provider API Keys: Secure storage for OpenAI, Anthropic, and Google Gemini API keys \nSession Persistence: Remembers the last selected provider and model \nType-Safe Configuration: Uses dataclasses with type hints for configuration structure \nAuto-Creation: Automatically creates config directory and file on first run \n\n\n\n\nThe configuration file is stored at:\n{XDG_CONFIG_HOME}/tui_writer/tui_writer.conf\nOn most systems, this resolves to ~/.config/tui_writer/tui_writer.conf.",
+    "crumbs": [
+      "Core Modules",
+      "Configuration"
+    ]
+  },
+  {
+    "objectID": "config.html#tuiwriterconfig-dataclass",
+    "href": "config.html#tuiwriterconfig-dataclass",
+    "title": "Configuration",
+    "section": "TuiWriterConfig Dataclass",
+    "text": "TuiWriterConfig Dataclass\nThe configuration is structured as a dataclass with five fields: \n\nopenai_key: API key for OpenAI models (GPT-4, GPT-3.5, etc.) \nanthropic_key: API key for Anthropic models (Claude) \ngemini_key: API key for Google Gemini models \nlast_provider: The most recently selected provider (openai/anthropic/gemini) \nlast_model: The most recently selected model ID \n\nAll fields default to empty strings. The configuration system handles missing or incomplete configurations gracefully.",
+    "crumbs": [
+      "Core Modules",
+      "Configuration"
+    ]
+  },
+  {
+    "objectID": "config.html#get_cfg-function",
+    "href": "config.html#get_cfg-function",
+    "title": "Configuration",
+    "section": "get_cfg Function",
+    "text": "get_cfg Function\nThe get_cfg() function is the main interface for accessing configuration. It returns a Config object from fastcore that provides dictionary-like access to configuration values with automatic file synchronization.\nBehavior: - Creates the configuration directory if it doesn’t exist - Creates the configuration file with default values on first run - Returns a Config instance with type checking based on TuiWriterConfig hints - Supports inline comments with # prefix - Automatically saves changes back to the file\nUsage:\ncfg = get_cfg()\ncfg['openai_key'] = 'sk-...'\ncfg['last_provider'] = 'openai'\ncfg['last_model'] = 'gpt-4o-mini'\nThe configuration is immediately persisted to disk when values are modified.",
+    "crumbs": [
+      "Core Modules",
+      "Configuration"
+    ]
+  },
+  {
+    "objectID": "ai.html",
+    "href": "ai.html",
+    "title": "AI",
+    "section": "",
+    "text": "This module implements the core AI-powered transcription editing system. It distinguishes between regular speech transcription and natural language edit commands, enabling a conversational editing workflow.\n\n\nThe system uses a Chat-based LLM (via lisette) that:  - Maintains conversation history to understand context  - Distinguishes between new content and edit instructions  - Returns either “APPEND” for new text or the complete edited transcript  - Tracks token usage across the entire session \n\n\n\nWorks with multiple LLM providers through lisette:  - OpenAI: GPT-4o, GPT-4o-mini, GPT-3.5-turbo  - Anthropic: Claude 3.5 Sonnet, Claude 3 Opus/Sonnet/Haiku  - Google: Gemini 1.5 Pro/Flash",
+    "crumbs": [
+      "Core Modules",
+      "AI"
+    ]
+  },
+  {
+    "objectID": "ai.html#ai-module",
+    "href": "ai.html#ai-module",
+    "title": "AI",
+    "section": "",
+    "text": "This module implements the core AI-powered transcription editing system. It distinguishes between regular speech transcription and natural language edit commands, enabling a conversational editing workflow.\n\n\nThe system uses a Chat-based LLM (via lisette) that:  - Maintains conversation history to understand context  - Distinguishes between new content and edit instructions  - Returns either “APPEND” for new text or the complete edited transcript  - Tracks token usage across the entire session \n\n\n\nWorks with multiple LLM providers through lisette:  - OpenAI: GPT-4o, GPT-4o-mini, GPT-3.5-turbo  - Anthropic: Claude 3.5 Sonnet, Claude 3 Opus/Sonnet/Haiku  - Google: Gemini 1.5 Pro/Flash",
+    "crumbs": [
+      "Core Modules",
+      "AI"
+    ]
+  },
+  {
+    "objectID": "ai.html#transcripteditor-class",
+    "href": "ai.html#transcripteditor-class",
+    "title": "AI",
+    "section": "TranscriptEditor Class",
+    "text": "TranscriptEditor Class\nThe TranscriptEditor class manages live transcription with AI-assisted editing capabilities. It uses keyword detection to trigger AI calls only when edit commands are detected, making it fast and cost-effective.\n\nInitialization\neditor = TranscriptEditor(model=\"openai/gpt-4o-mini\", temperature=0.1)\nParameters:  - model: Full model identifier in format “provider/model-name” (e.g., “openai/gpt-4o-mini”)  - temperature: LLM temperature for consistency (default: 0.1) \n\n\nSmart Triggering Strategy\nThe editor uses keyword detection to determine when to call the AI:  1. Fast path: No trigger words → instant append (no AI call)  2. AI path: Trigger word detected → AI analyzes full transcript  3. Stateless: Each AI call receives complete transcript (no history dependency) \nTrigger words include: change, replace, delete, remove, fix, correct, modify, edit, scratch, actually, wait, no, instead, undo\n\n\nAI Decision Process\nWhen triggered, the AI receives the full transcript and determines:  - Edit detected: Returns complete corrected transcript  - False alarm: Returns “APPEND” (user wasn’t actually editing) \nThis two-tier approach ensures 95% of speech appends instantly while still catching edit commands reliably.\n\n\n\nTranscriptEditor\n\n TranscriptEditor (model:str, temperature:float=0.1)\n\nManages live transcription with AI-assisted editing capabilities.",
+    "crumbs": [
+      "Core Modules",
+      "AI"
+    ]
+  },
+  {
+    "objectID": "ai.html#how-it-works",
+    "href": "ai.html#how-it-works",
+    "title": "AI",
+    "section": "How It Works",
+    "text": "How It Works\n\nProcess Flow\n\nUser speaks: “I love pizza” \nTranscriber produces: “I love pizza.” \nAI processes: Detects new content → Returns “APPEND” \nTranscript updated: Appends the new text \n\nThen later: \n\nUser speaks: “Actually, change pizza to hamburgers” \nTranscriber produces: “Actually, change pizza to hamburgers.” \nAI processes: Detects edit command → Returns full edited transcript \nTranscript updated: Replaces entire transcript with edited version \n\n\n\nContext Awareness\nThe Chat instance maintains hist (history) of all previous interactions. This allows it to:  - Understand references to “that”, “it”, “the last part”  - Track what has been said throughout the session  - Make intelligent decisions about edit scope \n\n\nToken Management\nThe editor tracks token usage across all API calls:  - tokens_used: Tokens consumed by the current chunk  - total_tokens: Cumulative tokens across the entire session \nThis helps users monitor API costs and understand the computational overhead of AI-assisted editing.\n\n\nError Handling\nIf the AI processing fails, the system gracefully degrades to simple append mode, ensuring transcription continues even if the AI service is unavailable.\n\nfrom dotenv import load_dotenv\nload_dotenv()\n\n# Test the TranscriptEditor\nimport asyncio\n\nasync def test_editor():\n    editor = TranscriptEditor(\"openai/gpt-4o-mini\")\n\n    # Simulate transcription chunks\n    chunks = [\n        \"My name is Batman.\\n\",\n        \"I love pizza.\\n\",\n        \"This transcriber is working quite well.\\n\",\n        \"Actually, change pizza to hamburgers.\\n\",\n        \"Maybe even delete that first sentence about my name.\\n\"\n    ]\n\n    for chunk in chunks:\n        result = await editor.process_chunk(chunk)\n        print(f\"\\n--- Chunk: {chunk.strip()}\")\n        print(f\"AI Called: {result['ai_called']}\")\n        print(f\"Action: {result['action']}\")\n        print(f\"Tokens used: {result['tokens_used']}\")\n        print(f\"Current transcript:\\n{result['transcript']}\")\n\n# Run the test\nawait test_editor()\n\n\n--- Chunk: My name is Batman.\n\nAction: append\nCurrent transcript:\n\nTokens used: 155\n\n--- Chunk: I love pizza.\n\nAction: append\nCurrent transcript:\n\nTokens used: 169\n\n--- Chunk: This transcriber is working quite well.\nAction: append\nCurrent transcript:\n\nTokens used: 187\n\n--- Chunk: Actually, change pizza to hamburgers.\nAction: edit\nCurrent transcript:\nMy name is Batman.  \nI love hamburgers.  \nThis transcriber is working quite well.\nTokens used: 223\n\n--- Chunk: Maybe even delete that first sentence about my name.\nAction: edit\nCurrent transcript:\nI love hamburgers.  \nThis transcriber is working quite well.\nTokens used: 255",
+    "crumbs": [
+      "Core Modules",
+      "AI"
+    ]
+  },
+  {
+    "objectID": "getting_started.html",
+    "href": "getting_started.html",
+    "title": "Getting Started",
+    "section": "",
+    "text": "TUI Writer is a terminal-based application that combines real-time speech transcription with AI-powered editing. Unlike traditional transcription tools that simply convert speech to text, TUI Writer acts as an intelligent companion that understands natural language editing commands.\nCore Workflow:  1. Speak into your microphone  2. See your words transcribed in real-time  3. Make edits by speaking naturally: “change that to…” or “delete the last sentence”  4. The AI automatically detects and applies your edits  5. Copy the final transcript to your clipboard \nFor developers new to nbdev, the following sections explain the development workflow.\n\n\nFor development and contributions, install the package in editable mode:\n# Clone the repository\ngit clone https://github.com/Swiftner/tui_writer.git\ncd tui_writer\n\n# Install in development mode\npip install -e .\n\n# Make changes under nbs/ directory\n# The notebooks in nbs/ are the source of truth\n\n# After making changes, regenerate the Python modules\nnbdev_prepare\nThe nbdev_prepare command: - Exports code from notebooks to Python modules - Runs tests - Updates documentation - Cleans notebook outputs",
+    "crumbs": [
+      "Getting Started"
+    ]
+  },
+  {
+    "objectID": "getting_started.html#what-is-tui-writer",
+    "href": "getting_started.html#what-is-tui-writer",
+    "title": "Getting Started",
+    "section": "",
+    "text": "TUI Writer is a terminal-based application that combines real-time speech transcription with AI-powered editing. Unlike traditional transcription tools that simply convert speech to text, TUI Writer acts as an intelligent companion that understands natural language editing commands.\nCore Workflow:  1. Speak into your microphone  2. See your words transcribed in real-time  3. Make edits by speaking naturally: “change that to…” or “delete the last sentence”  4. The AI automatically detects and applies your edits  5. Copy the final transcript to your clipboard \nFor developers new to nbdev, the following sections explain the development workflow.\n\n\nFor development and contributions, install the package in editable mode:\n# Clone the repository\ngit clone https://github.com/Swiftner/tui_writer.git\ncd tui_writer\n\n# Install in development mode\npip install -e .\n\n# Make changes under nbs/ directory\n# The notebooks in nbs/ are the source of truth\n\n# After making changes, regenerate the Python modules\nnbdev_prepare\nThe nbdev_prepare command: - Exports code from notebooks to Python modules - Runs tests - Updates documentation - Cleans notebook outputs",
+    "crumbs": [
+      "Getting Started"
+    ]
+  },
+  {
+    "objectID": "getting_started.html#usage",
+    "href": "getting_started.html#usage",
+    "title": "Getting Started",
+    "section": "Usage",
+    "text": "Usage\n\nInstallation\n\n\nInstallation Options\nInstall TUI Writer using pip:\npip install tui_writer\nOr with uv:\nuv pip install tui_writer\n\n\nPrerequisites\nTUI Writer requires:  - Python 3.9 or higher  - A working microphone  - API key for at least one LLM provider (OpenAI, Anthropic, or Google) \n\n\nFirst Run Setup\nAfter installation, launch the application:\ntui_writer\nOn first run, you will need to:  1. Press a to open AI settings  2. Select your preferred provider (OpenAI, Anthropic, or Google)  3. Choose a model  4. Enter your API key  5. Press Apply \nThe configuration is saved to ~/.config/tui_writer/tui_writer.conf and persists across sessions.\n\n\nBasic Usage\nOnce configured:  - Press SPACE to start recording  - Speak naturally - your words appear in real-time  - Say edit commands like “change that to…” and they are applied automatically  - Press SPACE to stop recording  - Press C to copy the transcript to clipboard  - Press Q to quit \nFor detailed documentation on all features, press ? in the application to view the help screen.",
+    "crumbs": [
+      "Getting Started"
+    ]
+  },
+  {
+    "objectID": "live.html",
+    "href": "live.html",
+    "title": "Transcription",
+    "section": "",
+    "text": "This module implements a real-time speech-to-text system that:  - Listens to microphone input continuously  - Uses Silero VAD (Voice Activity Detection) to detect when you are speaking  - Automatically segments audio into utterances based on natural pauses  - Transcribes each utterance using Faster-Whisper (optimized Whisper implementation)  - Streams transcribed text chunks as they become available \nThe system is optimized for interactive applications that need responsive, chunked speech transcription with minimal latency.\n\n\nThe implementation uses a multi-threaded, asynchronous architecture:\n\nPyAudio Thread: Captures raw audio from the microphone \nAsyncIO Queue: Thread-safe bridge between audio callback and async processing \nProcessing Loop: Analyzes audio with VAD and triggers transcription \nWorker Threads: Runs Whisper transcription without blocking the main loop \n\nThis design ensures audio capture never blocks or drops frames while maintaining responsive transcription.",
+    "crumbs": [
+      "Core Modules",
+      "Transcription"
+    ]
+  },
+  {
+    "objectID": "live.html#live-transcription",
+    "href": "live.html#live-transcription",
+    "title": "Transcription",
+    "section": "",
+    "text": "This module implements a real-time speech-to-text system that:  - Listens to microphone input continuously  - Uses Silero VAD (Voice Activity Detection) to detect when you are speaking  - Automatically segments audio into utterances based on natural pauses  - Transcribes each utterance using Faster-Whisper (optimized Whisper implementation)  - Streams transcribed text chunks as they become available \nThe system is optimized for interactive applications that need responsive, chunked speech transcription with minimal latency.\n\n\nThe implementation uses a multi-threaded, asynchronous architecture:\n\nPyAudio Thread: Captures raw audio from the microphone \nAsyncIO Queue: Thread-safe bridge between audio callback and async processing \nProcessing Loop: Analyzes audio with VAD and triggers transcription \nWorker Threads: Runs Whisper transcription without blocking the main loop \n\nThis design ensures audio capture never blocks or drops frames while maintaining responsive transcription.",
+    "crumbs": [
+      "Core Modules",
+      "Transcription"
+    ]
+  },
+  {
+    "objectID": "live.html#imports-and-device-selection",
+    "href": "live.html#imports-and-device-selection",
+    "title": "Transcription",
+    "section": "Imports and Device Selection",
+    "text": "Imports and Device Selection\nThe module imports only essential dependencies:  - numpy: Audio data manipulation and buffer management  - torch: Required for Silero VAD model  - pyaudio: Cross-platform audio I/O  - faster_whisper: Optimized Whisper implementation with CTranslate2 backend  - asyncio: Non-blocking audio processing  - logging: Debug and status output \n\nDevice Selection Strategy\nThe get_device() helper automatically selects the best available compute device:\n\nCPU (forced): If force_cpu=True \nCUDA: NVIDIA GPU acceleration (if available) \nMPS: Apple Silicon Metal Performance Shaders (if available) \nCPU (fallback): Default fallback \n\nFor Whisper models, device selection impacts speed significantly:  - CPU: Slower but works everywhere  - CUDA: 5-10x faster on compatible NVIDIA GPUs  - MPS: 3-5x faster on M1/M2/M3 Macs",
+    "crumbs": [
+      "Core Modules",
+      "Transcription"
+    ]
+  },
+  {
+    "objectID": "live.html#silero-vad-voice-activity-detection",
+    "href": "live.html#silero-vad-voice-activity-detection",
+    "title": "Transcription",
+    "section": "🗣️ Silero VAD (Voice Activity Detection)",
+    "text": "🗣️ Silero VAD (Voice Activity Detection)\nThis small helper loads the Silero VAD model from torch.hub.\nSilero VAD is a lightweight neural model that outputs the probability of speech (0–1).\nWe’ll use it to decide when the user is talking or has paused — so we can send only meaningful speech chunks to Whisper.\nIf Silero fails to load (e.g., offline), we just return None and handle it later.",
+    "crumbs": [
+      "Core Modules",
+      "Transcription"
+    ]
+  },
+  {
+    "objectID": "live.html#live-transcription-test",
+    "href": "live.html#live-transcription-test",
+    "title": "Transcription",
+    "section": "🧪 Live Transcription Test",
+    "text": "🧪 Live Transcription Test\nThis test starts a 10-second live recording session using the LiveTranscriber.\nSpeak naturally in short sentences — each pause will automatically trigger a transcription.\nEach transcribed chunk is printed as soon as it’s ready, and all results are shown at the end.\n\nimport asyncio\n\nall_chunks = []\n\ndef handle_transcript_chunk(text: str):\n    \"\"\"Callback called whenever a transcription chunk is ready.\"\"\"\n    if text.strip():\n        print(f\"\\n[TRANSCRIBED] {text}\")\n        all_chunks.append(text)\n\nasync def test_live_transcription(duration_seconds: int = 10):\n    all_chunks.clear()\n    print(\"🎤 Speak in short sentences; pauses will trigger transcription.\")\n    transcriber = LiveTranscriber(\n        model_id=\"base\",          # keep whatever model id you use\n        language=\"en\",\n        on_transcript=handle_transcript_chunk,\n        vad_threshold=0.5,\n        min_speech_duration_ms=250,\n        min_silence_duration_ms=500,\n    )\n\n    # start the transcriber in the background\n    start_task = asyncio.create_task(transcriber.start())\n\n    try:\n        # run for given duration (you can interrupt with Ctrl+C)\n        await asyncio.sleep(duration_seconds)\n    except KeyboardInterrupt:\n        print(\"Interrupted by user.\")\n    finally:\n        # ask the transcriber to stop and wait for it to finish\n        await transcriber.stop()\n\n        # wait for the start() task to exit cleanly\n        try:\n            await start_task\n        except Exception as e:\n            # if any error bubbled up from start/process_audio, show it\n            print(f\"Transcriber task ended with exception: {e}\")\n\n    print(\"\\n📝 Full transcript:\")\n    for i, t in enumerate(all_chunks, 1):\n        print(f\"{i}. {t}\")\n\n# run it\nawait test_live_transcription(10)\n\n🎤 Speak in short sentences; pauses will trigger transcription.\n\n\nUsing cache found in /home/jens/.cache/torch/hub/snakers4_silero-vad_master\nALSA lib pcm_dsnoop.c:567:(snd_pcm_dsnoop_open) unable to open slave\nALSA lib pcm_dmix.c:1000:(snd_pcm_dmix_open) unable to open slave\nALSA lib pcm.c:2722:(snd_pcm_open_noupdate) Unknown PCM cards.pcm.rear\nALSA lib pcm.c:2722:(snd_pcm_open_noupdate) Unknown PCM cards.pcm.center_lfe\nALSA lib pcm.c:2722:(snd_pcm_open_noupdate) Unknown PCM cards.pcm.side\nALSA lib pcm_dmix.c:1000:(snd_pcm_dmix_open) unable to open slave\n\n\n\n[TRANSCRIBED] Okay, can you hear me?\n\n[TRANSCRIBED] That's nice.\n\n[TRANSCRIBED] What if now?\n\n[TRANSCRIBED] and now\n\n📝 Full transcript:\n1. Okay, can you hear me?\n2. That's nice.\n3. What if now?\n4. and now",
+    "crumbs": [
+      "Core Modules",
+      "Transcription"
+    ]
+  }
+]

@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.26">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>TUI – tui_writer</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./static/favicon.ico" rel="icon">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-b758ccaa5987ceb1b75504551e579abf.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-2eb1021dfeeaed9502868759e4fb33d2.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="dark">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="styles.css">
+<meta property="og:title" content="TUI – tui_writer">
+<meta property="og:description" content="A TUI that you run to transcribe and edit text. It’s like a companion that dictates for you, engaging in a dialogue to collaboratively update a block of text rather than performing a direct transcription.">
+<meta property="og:site_name" content="tui_writer">
+<meta name="twitter:title" content="TUI – tui_writer">
+<meta name="twitter:description" content="A TUI that you run to transcribe and edit text. It’s like a companion that dictates for you, engaging in a dialogue to collaboratively update a block of text rather than performing a direct transcription.">
+<meta name="twitter:card" content="summary">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="./index.html" class="navbar-brand navbar-brand-logo">
+    <img src="./static/logo.svg" alt="" class="navbar-logo light-content">
+    <img src="./static/logo.svg" alt="" class="navbar-logo dark-content">
+    </a>
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">tui_writer</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./cli.html">Core Modules</a></li><li class="breadcrumb-item"><a href="./tui.html">TUI</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Welcome to TUI Writer</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./getting_started.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Getting Started</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Core Modules</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./cli.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">CLI</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./ai.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">AI</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./config.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Configuration</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./live.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Transcription</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./tui.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">TUI</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#tui-module---terminal-user-interface" id="toc-tui-module---terminal-user-interface" class="nav-link active" data-scroll-target="#tui-module---terminal-user-interface">TUI Module - Terminal User Interface</a>
+  <ul class="collapse">
+  <li><a href="#overview" id="toc-overview" class="nav-link" data-scroll-target="#overview">Overview</a></li>
+  <li><a href="#architecture" id="toc-architecture" class="nav-link" data-scroll-target="#architecture">Architecture</a></li>
+  <li><a href="#key-features" id="toc-key-features" class="nav-link" data-scroll-target="#key-features">Key Features</a></li>
+  </ul></li>
+  <li><a href="#styling-with-textual-css" id="toc-styling-with-textual-css" class="nav-link" data-scroll-target="#styling-with-textual-css">Styling with Textual CSS</a></li>
+  <li><a href="#settingsmodal---audio-configuration" id="toc-settingsmodal---audio-configuration" class="nav-link" data-scroll-target="#settingsmodal---audio-configuration">SettingsModal - Audio Configuration</a>
+  <ul class="collapse">
+  <li><a href="#available-models" id="toc-available-models" class="nav-link" data-scroll-target="#available-models">Available Models</a></li>
+  <li><a href="#language-support" id="toc-language-support" class="nav-link" data-scroll-target="#language-support">Language Support</a></li>
+  <li><a href="#implementation" id="toc-implementation" class="nav-link" data-scroll-target="#implementation">Implementation</a></li>
+  </ul></li>
+  <li><a href="#ai-settings-modal" id="toc-ai-settings-modal" class="nav-link" data-scroll-target="#ai-settings-modal">AI Settings Modal</a>
+  <ul class="collapse">
+  <li><a href="#multi-provider-architecture" id="toc-multi-provider-architecture" class="nav-link" data-scroll-target="#multi-provider-architecture">Multi-Provider Architecture</a></li>
+  <li><a href="#dynamic-ui-updates" id="toc-dynamic-ui-updates" class="nav-link" data-scroll-target="#dynamic-ui-updates">Dynamic UI Updates</a></li>
+  <li><a href="#api-key-management" id="toc-api-key-management" class="nav-link" data-scroll-target="#api-key-management">API Key Management</a></li>
+  <li><a href="#persistence" id="toc-persistence" class="nav-link" data-scroll-target="#persistence">Persistence</a></li>
+  </ul></li>
+  <li><a href="#helpmodal" id="toc-helpmodal" class="nav-link" data-scroll-target="#helpmodal">HelpModal</a>
+  <ul class="collapse">
+  <li><a href="#content-structure" id="toc-content-structure" class="nav-link" data-scroll-target="#content-structure">Content Structure</a></li>
+  <li><a href="#features" id="toc-features" class="nav-link" data-scroll-target="#features">Features</a></li>
+  <li><a href="#implementation-1" id="toc-implementation-1" class="nav-link" data-scroll-target="#implementation-1">Implementation</a></li>
+  </ul></li>
+  <li><a href="#transcription-tui" id="toc-transcription-tui" class="nav-link" data-scroll-target="#transcription-tui">Transcription TUI</a>
+  <ul class="collapse">
+  <li><a href="#state-management" id="toc-state-management" class="nav-link" data-scroll-target="#state-management">State Management</a></li>
+  <li><a href="#recording-state-indicators" id="toc-recording-state-indicators" class="nav-link" data-scroll-target="#recording-state-indicators">Recording State Indicators</a></li>
+  <li><a href="#ai-integration-strategy" id="toc-ai-integration-strategy" class="nav-link" data-scroll-target="#ai-integration-strategy">AI Integration Strategy</a></li>
+  <li><a href="#transcription-flow" id="toc-transcription-flow" class="nav-link" data-scroll-target="#transcription-flow">Transcription Flow</a></li>
+  <li><a href="#callback-pattern" id="toc-callback-pattern" class="nav-link" data-scroll-target="#callback-pattern">Callback Pattern</a></li>
+  <li><a href="#configuration-loading" id="toc-configuration-loading" class="nav-link" data-scroll-target="#configuration-loading">Configuration Loading</a></li>
+  <li><a href="#keyboard-bindings" id="toc-keyboard-bindings" class="nav-link" data-scroll-target="#keyboard-bindings">Keyboard Bindings</a></li>
+  </ul></li>
+  </ul>
+<div class="toc-actions"><ul><li><a href="https://github.com/Swiftner/tui_writer/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div><div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="tui.html.md"><i class="bi bi-file-code"></i>CommonMark</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./cli.html">Core Modules</a></li><li class="breadcrumb-item"><a href="./tui.html">TUI</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">TUI</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<!-- WARNING: THIS FILE WAS AUTOGENERATED! DO NOT EDIT! -->
+<section id="tui-module---terminal-user-interface" class="level2">
+<h2 class="anchored" data-anchor-id="tui-module---terminal-user-interface">TUI Module - Terminal User Interface</h2>
+<p>This module implements the complete Textual-based terminal user interface for live audio transcription with AI-powered editing capabilities.</p>
+<section id="overview" class="level3">
+<h3 class="anchored" data-anchor-id="overview">Overview</h3>
+<p>The TUI provides a full-featured interactive interface that combines: <br> - Real-time speech transcription with Faster Whisper <br> - AI-powered edit detection and application <br> - Multi-provider AI support (OpenAI, Anthropic, Google) <br> - Keyboard-driven workflow with modal dialogs <br> - Visual feedback for recording state and AI operations <br></p>
+</section>
+<section id="architecture" class="level3">
+<h3 class="anchored" data-anchor-id="architecture">Architecture</h3>
+<p>The interface is built with Textual, a modern Python framework for building terminal UIs. The architecture consists of:</p>
+<ol type="1">
+<li><strong>Main Application</strong> (<code>TranscriptionTUI</code>): Coordinates all components and manages state <br></li>
+<li><strong>Modal Screens</strong>: Settings dialogs for audio and AI configuration <br></li>
+<li><strong>Help System</strong>: Comprehensive in-app documentation <br></li>
+<li><strong>Event Handlers</strong>: Keyboard shortcuts and user interactions <br></li>
+<li><strong>Reactive UI</strong>: Automatic updates based on state changes <br></li>
+</ol>
+</section>
+<section id="key-features" class="level3">
+<h3 class="anchored" data-anchor-id="key-features">Key Features</h3>
+<ul>
+<li><strong>Live Transcription Display</strong>: Scrolling log that shows transcripts in real-time <br></li>
+<li><strong>Recording Indicator</strong>: Header turns red during active recording <br></li>
+<li><strong>Status Notifications</strong>: Toast-style messages for user feedback <br></li>
+<li><strong>Clipboard Integration</strong>: One-key copy of entire transcript <br></li>
+<li><strong>Persistent Configuration</strong>: Remembers settings and API keys between sessions <br></li>
+</ul>
+</section>
+</section>
+<section id="styling-with-textual-css" class="level2">
+<h2 class="anchored" data-anchor-id="styling-with-textual-css">Styling with Textual CSS</h2>
+<p>The CSS defines the visual appearance of the TUI using Textual’s CSS-like syntax. Key features: <br> - <strong>Recording indicator</strong>: Changes header background to red (<code>$error</code>) when recording <br> - <strong>Transcript display</strong>: Styled with hatching pattern and padding for readability <br> - <strong>Modal layouts</strong>: Centered dialogs for settings and help screens <br> - Uses Textual’s built-in color variables like <code>$background</code>, <code>$surface</code>, <code>$boost</code>, etc. <br></p>
+</section>
+<section id="settingsmodal---audio-configuration" class="level2">
+<h2 class="anchored" data-anchor-id="settingsmodal---audio-configuration">SettingsModal - Audio Configuration</h2>
+<p>Modal dialog for configuring Whisper transcription settings. Accessed by pressing <code>s</code> in the main interface.</p>
+<section id="available-models" class="level3">
+<h3 class="anchored" data-anchor-id="available-models">Available Models</h3>
+<p>The modal offers 10 Whisper model options with trade-offs between speed and accuracy:</p>
+<p><strong>Standard Models</strong> (multilingual): <br> - <strong>Tiny</strong>: Ultra fast, low accuracy - Good for testing or real-time needs <br> - <strong>Base</strong>: Fast, decent accuracy - Recommended starting point <br> - <strong>Small</strong>: Balanced speed and accuracy - Good general purpose choice <br> - <strong>Medium</strong>: Slow, high accuracy - For when quality matters <br> - <strong>Large-v3</strong>: Very slow, best accuracy - Maximum quality <br></p>
+<p><strong>English-Only Models</strong> (faster variants): <br> - <strong>Tiny.en</strong> through <strong>Large.en</strong>: Optimized for English, typically 2x faster than multilingual equivalents <br></p>
+</section>
+<section id="language-support" class="level3">
+<h3 class="anchored" data-anchor-id="language-support">Language Support</h3>
+<p>Supports 40+ languages including: <br> - European: English, German, French, Spanish, Italian, Portuguese, Dutch, Polish, Czech, Slovak, etc. <br> - Nordic: Norwegian, Swedish, Danish, Finnish <br> - Slavic: Russian, Ukrainian, Serbian, Croatian, Bulgarian, Slovenian <br> - Asian: Chinese (Mandarin/Cantonese), Japanese, Korean, Hindi, Bengali, Thai, Vietnamese, Indonesian <br> - Middle Eastern: Arabic, Hebrew, Persian, Turkish, Urdu <br> - African: Swahili, Afrikaans <br></p>
+</section>
+<section id="implementation" class="level3">
+<h3 class="anchored" data-anchor-id="implementation">Implementation</h3>
+<p>Uses Textual’s <code>Select</code> widgets for dropdown menus. Selected values are returned when the modal is dismissed and applied via the <code>apply_settings()</code> callback in the main app.</p>
+</section>
+</section>
+<section id="ai-settings-modal" class="level2">
+<h2 class="anchored" data-anchor-id="ai-settings-modal">AI Settings Modal</h2>
+<p>Advanced modal for managing AI models across different providers. Accessed by pressing <code>a</code> in the main interface.</p>
+<section id="multi-provider-architecture" class="level3">
+<h3 class="anchored" data-anchor-id="multi-provider-architecture">Multi-Provider Architecture</h3>
+<p>The modal provides a unified interface for three LLM providers:</p>
+<p><strong>OpenAI</strong> - Most popular, wide range of models: <br> - GPT-4o: Latest flagship model, fast and capable <br> - GPT-4o Mini: Smaller, faster, cost-effective variant <br> - GPT-4 Turbo: Previous generation flagship <br> - GPT-4: Original GPT-4 <br> - GPT-3.5 Turbo: Fast and economical <br></p>
+<p><strong>Anthropic</strong> - Claude models known for safety and helpfulness: <br> - Claude 3.5 Sonnet: Latest and most capable <br> - Claude 3 Opus: Powerful reasoning and analysis <br> - Claude 3 Sonnet: Balanced performance <br> - Claude 3 Haiku: Fast and efficient <br></p>
+<p><strong>Google Gemini</strong> - Google’s multimodal models: <br> - Gemini 1.5 Pro: Large context window, powerful <br> - Gemini 1.5 Flash: Fast inference, economical <br> - Gemini 1.0 Pro: Previous generation <br></p>
+</section>
+<section id="dynamic-ui-updates" class="level3">
+<h3 class="anchored" data-anchor-id="dynamic-ui-updates">Dynamic UI Updates</h3>
+<p>When you change providers, the modal: <br> 1. Updates the model dropdown with provider-specific options <br> 2. Loads any existing API key for that provider (displayed as masked dots) <br> 3. Updates the placeholder text in the API key field <br> 4. Preserves the last selected model if switching back to a previous provider <br></p>
+</section>
+<section id="api-key-management" class="level3">
+<h3 class="anchored" data-anchor-id="api-key-management">API Key Management</h3>
+<p>API keys are: <br> - Stored in XDG-compliant config file at <code>~/.config/tui_writer/tui_writer.conf</code> <br> - Displayed as dots for security when present <br> - Only updated if you type a new value (leaving blank keeps existing key) <br> - Loaded into environment variables (<code>OPENAI_API_KEY</code>, etc.) when the app starts <br></p>
+</section>
+<section id="persistence" class="level3">
+<h3 class="anchored" data-anchor-id="persistence">Persistence</h3>
+<p>The modal remembers: <br> - Last used provider <br> - Last selected model for each provider <br> - API keys for all providers <br></p>
+<p>This allows seamless switching between providers without re-entering credentials.</p>
+</section>
+</section>
+<section id="helpmodal" class="level2">
+<h2 class="anchored" data-anchor-id="helpmodal">HelpModal</h2>
+<p>Interactive help screen accessible by pressing <code>?</code> in the main interface. Displays comprehensive documentation using Textual’s MarkdownViewer component.</p>
+<section id="content-structure" class="level3">
+<h3 class="anchored" data-anchor-id="content-structure">Content Structure</h3>
+<p>The help documentation covers:</p>
+<p><strong>Usage Instructions:</strong> <br> - How to start and stop recording <br> - How the AI automatically detects edit commands <br> - Example voice commands for editing <br></p>
+<p><strong>Settings Configuration:</strong> <br> - Audio settings: Model and language selection <br> - AI settings: Provider and model configuration <br></p>
+<p><strong>Keyboard Shortcuts:</strong> <br> - Complete reference table of all available shortcuts <br> - Quick access to common operations <br></p>
+</section>
+<section id="features" class="level3">
+<h3 class="anchored" data-anchor-id="features">Features</h3>
+<ul>
+<li><strong>Markdown Rendering</strong>: Full support for headings, lists, tables, and formatting <br></li>
+<li><strong>Table of Contents</strong>: Automatic navigation sidebar for long documents <br></li>
+<li><strong>Scrollable</strong>: Can handle extensive documentation <br></li>
+<li><strong>Keyboard Dismissal</strong>: Press Esc or click Close button to exit <br></li>
+</ul>
+</section>
+<section id="implementation-1" class="level3">
+<h3 class="anchored" data-anchor-id="implementation-1">Implementation</h3>
+<p>The <code>HELP_MARKDOWN</code> constant contains the documentation as a multi-line string. The MarkdownViewer widget handles parsing and rendering with syntax highlighting and proper formatting.</p>
+<p>This approach allows easy updates to documentation without changing code structure - just edit the markdown content.</p>
+</section>
+</section>
+<section id="transcription-tui" class="level2">
+<h2 class="anchored" data-anchor-id="transcription-tui">Transcription TUI</h2>
+<p>The core application that integrates all components into a cohesive user experience.</p>
+<section id="state-management" class="level3">
+<h3 class="anchored" data-anchor-id="state-management">State Management</h3>
+<p>The application uses a simple state machine with two states:</p>
+<ul>
+<li><strong>IDLE</strong>: Not recording, waiting for user input <br></li>
+<li><strong>RECORDING</strong>: Active transcription in progress <br></li>
+</ul>
+<p>The <code>state</code> attribute is reactive, meaning changes automatically trigger UI updates through the <code>watch_state()</code> method.</p>
+</section>
+<section id="recording-state-indicators" class="level3">
+<h3 class="anchored" data-anchor-id="recording-state-indicators">Recording State Indicators</h3>
+<p><strong>Visual feedback when recording:</strong> - Header background turns red - Title changes to “● RECORDING” - Footer shows recording-specific shortcuts</p>
+<p><strong>Visual feedback when idle:</strong> - Header background normal - Title shows “○ STANDBY (provider/model)” - Footer shows all available shortcuts</p>
+</section>
+<section id="ai-integration-strategy" class="level3">
+<h3 class="anchored" data-anchor-id="ai-integration-strategy">AI Integration Strategy</h3>
+<p>The application maintains a single <code>TranscriptEditor</code> instance throughout its lifetime. This is important because:</p>
+<ol type="1">
+<li><strong>Memory Persistence</strong>: The Chat inside TranscriptEditor maintains a <code>hist</code> (history) of all interactions</li>
+<li><strong>Cross-Session Context</strong>: Even after stopping and restarting recording, the AI remembers previous context</li>
+<li><strong>Efficient Token Usage</strong>: Conversation history allows contextual edits without re-sending entire transcript</li>
+<li><strong>Better Edit Detection</strong>: The AI understands references like “that” or “the last part” from earlier in the session</li>
+</ol>
+</section>
+<section id="transcription-flow" class="level3">
+<h3 class="anchored" data-anchor-id="transcription-flow">Transcription Flow</h3>
+<ol type="1">
+<li><strong>User presses SPACE</strong> → <code>action_toggle_recording()</code> called</li>
+<li><strong>State changes to RECORDING</strong> → UI updates via <code>watch_state()</code></li>
+<li><strong>LiveTranscriber starts</strong> → Begins capturing audio and running VAD</li>
+<li><strong>Whisper transcribes utterances</strong> → Calls <code>on_transcript_chunk()</code> with each result</li>
+<li><strong>AI processes chunk</strong> → <code>transcript_editor.process_chunk()</code> determines action</li>
+<li><strong>Display updates</strong>:
+<ul>
+<li>For appends: Add new line to Log widget</li>
+<li>For edits: Clear Log and redisplay full transcript</li>
+</ul></li>
+<li><strong>User presses SPACE again</strong> → State returns to IDLE, transcriber stops</li>
+</ol>
+</section>
+<section id="callback-pattern" class="level3">
+<h3 class="anchored" data-anchor-id="callback-pattern">Callback Pattern</h3>
+<p>The <code>on_transcript_chunk()</code> callback demonstrates graceful error handling:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="cf">try</span>:</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    result <span class="op">=</span> <span class="va">self</span>.transcript_editor.process_chunk(text)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Update UI based on result</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="cf">except</span> <span class="pp">Exception</span> <span class="im">as</span> e:</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Fallback: just append text without AI processing</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>.transcript_display.write_line(text)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This ensures transcription continues even if AI processing fails (network issues, API limits, etc.).</p>
+</section>
+<section id="configuration-loading" class="level3">
+<h3 class="anchored" data-anchor-id="configuration-loading">Configuration Loading</h3>
+<p>On mount, the application: 1. Loads configuration from disk 2. Reads API keys for all providers 3. Sets environment variables for LLM clients 4. Checks if configuration is valid 5. Displays appropriate warnings if setup is incomplete</p>
+</section>
+<section id="keyboard-bindings" class="level3">
+<h3 class="anchored" data-anchor-id="keyboard-bindings">Keyboard Bindings</h3>
+<p>All keyboard shortcuts are declared in the <code>BINDINGS</code> class attribute:</p>
+<ul>
+<li><strong>q</strong>: Quit application</li>
+<li><strong>?</strong>: Open help modal</li>
+<li><strong>s</strong>: Open audio settings</li>
+<li><strong>a</strong>: Open AI model settings<br>
+</li>
+<li><strong>space</strong>: Toggle recording on/off</li>
+<li><strong>c</strong>: Copy transcript to clipboard</li>
+</ul>
+<p>Textual automatically displays these in the footer and handles the key events.</p>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/tui-writer\.swiftner\.app\/");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+<p><img src="static/logo.svg" alt="TUI Writer Logo" style="height: 30px;"></p>
+</div>   
+    <div class="nav-footer-center">
+      &nbsp;
+    <div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Swiftner/tui_writer/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div>
+    <div class="nav-footer-right">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/Swiftner">
+      <i class="bi bi-github" role="img">
+</i> 
+    </a>
+  </li>  
+    <li class="nav-item compact">
+    <a class="nav-link" href="https://www.linkedin.com/company/swiftner/">
+      <i class="bi bi-linkedin" role="img">
+</i> 
+    </a>
+  </li>  
+    <li class="nav-item compact">
+    <a class="nav-link" href="https://swiftner.com/">
+      <i class="bi bi-link-45deg" role="img">
+</i> 
+    </a>
+  </li>  
+</ul>
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
