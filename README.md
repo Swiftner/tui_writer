@@ -84,6 +84,8 @@ persists across sessions.
 
 ### Basic Usage
 
+![Demo](./demo.gif)
+
 Once configured: <br> - **Press SPACE** to start recording <br> -
 **Speak naturally** - your words appear in real-time <br> - **Say edit
 commands** like “change that to…” and they are applied automatically
